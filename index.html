@@ -3139,9 +3139,9 @@ function TaskRepositoryScreen({tasks,setTasks}){
                   {!compact&&<td style={{fontSize:12}}>{t.energyRequired}</td>}
                   {!compact&&<td style={{fontSize:12}}>{t.energyEffect}</td>}
                   {!compact&&<td style={{fontSize:12,color:t.layerable?'var(--green)':'var(--text3)'}}>{t.layerable?'✓':'✗'}</td>}
-                  <td onClick={e=>e.stopPropagation()}>
-                    <button className="action-btn" onClick={()=>setEditT(t)}>✏️</button>
-                    <button className="action-btn" onClick={()=>del(t.id)}>🗑️</button>
+                  <td onClick={e=>e.stopPropagation()} style={{whiteSpace:'nowrap'}}>
+                    <button className="action-btn" style={{fontSize:16,padding:'4px 6px'}} onClick={()=>setEditT(t)}>✏️</button>
+                    <button className="action-btn" style={{fontSize:16,padding:'4px 6px',color:'var(--red)'}} onClick={()=>del(t.id)}>🗑️</button>
                   </td>
                 </tr>
               );
