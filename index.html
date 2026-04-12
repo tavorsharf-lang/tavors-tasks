@@ -1924,12 +1924,12 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
       {/* ── Header ── */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
-          <button className="btn btn-ghost btn-sm" style={{padding:'4px 8px'}} onClick={()=>setDayOffset(d=>d+1)}>הבא ←</button>
+          <button className="btn btn-ghost btn-sm" style={{padding:'4px 8px'}} onClick={()=>setDayOffset(d=>d-1)}>הקודם →</button>
           <div style={{textAlign:'center'}}>
             <h2 style={{fontSize:15,fontWeight:800,margin:0}}>{viewingToday?'📋 היום':'📋 '+dateStr}</h2>
             {!viewingToday&&<button onClick={()=>setDayOffset(0)} style={{background:'none',border:'none',color:'var(--accent2)',cursor:'pointer',fontSize:10,fontFamily:'inherit'}}>חזור להיום</button>}
           </div>
-          <button className="btn btn-ghost btn-sm" style={{padding:'4px 8px'}} onClick={()=>setDayOffset(d=>d-1)}>→ הקודם</button>
+          <button className="btn btn-ghost btn-sm" style={{padding:'4px 8px'}} onClick={()=>setDayOffset(d=>d+1)}>← הבא</button>
         </div>
         <div style={{display:'flex',gap:5}}>
           <button className="btn btn-ghost btn-sm" onClick={copySchedule}>{copyMsg||'📋 העתק'}</button>
