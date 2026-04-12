@@ -4925,6 +4925,7 @@ function App(){
           {screen==='tasks'&&<TaskRepositoryScreen tasks={tasks} setTasks={setTasks}/>}
           {screen==='summary'&&<WeeklySummaryScreen history={history} tasks={tasks} weeklyPlan={weeklyPlan} schedule={schedule}/>}
           {screen==='weekly'&&<WeeklyScheduleScreen key={weeklyKey} tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>}
+          {screen==='monthly'&&<MonthlyYearlyScreen tasks={tasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} setScreen={setScreen}/>}
         </div>
       )}
 
