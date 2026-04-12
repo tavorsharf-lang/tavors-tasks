@@ -617,6 +617,21 @@ const CAT_COLORS={
   neutral:{bg:'var(--card)',border:'var(--border)'},
 };
 
+// ── Self-development rotation tasks (20 min each, one per day) ──
+const GROWTH_TASKS=[
+  {id:'g1',name:'✍️ תיעוד תובנות ואירועים משמעותיים',duration:20,domain:'פיתוח עצמי'},
+  {id:'g2',name:'💬 שפת אני',duration:20,domain:'פיתוח עצמי'},
+  {id:'g3',name:'⚖️ תרגול קייס משפטי',duration:20,domain:'פיתוח מקצועי'},
+  {id:'g4',name:'🏛️ מועצת המנהלים',duration:20,domain:'פיתוח עצמי'},
+];
+
+function getGrowthTaskForDate(dateKey){
+  // Rotate: each day gets a different growth task
+  const d=new Date(dateKey);
+  const dayOfYear=Math.floor((d-new Date(d.getFullYear(),0,0))/(1000*60*60*24));
+  return GROWTH_TASKS[dayOfYear%GROWTH_TASKS.length];
+}
+
 const DAYS=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
 const MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 
@@ -715,6 +730,12 @@ function buildSchedule(tasks,wakeMin,mainTaskId,breakDur,dow){
   // Second physio (after B tasks)
   if(physio&&cur<16*60){
     push(physio,10,'פיזיותרפיה (סשן שני)',false,'להקביל');
+  }
+
+  // Daily growth task (rotates)
+  const todayGrowth=getGrowthTaskForDate(new Date().toISOString().split('T')[0]);
+  if(todayGrowth&&cur<20*60){
+    push(null,todayGrowth.duration,'🌱 '+todayGrowth.name,false,null);
   }
 
   // Dog walk — after all A+B tasks
@@ -1261,6 +1282,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,setHistory,set
   useEffect(()=>{setScheduleRef.current=setSchedule;},[setSchedule]);
   // Side panel (split view)
   const [showSidePanel,setShowSidePanel]=useState(false);
+  const [sidePanelTab,setSidePanelTab]=useState('tasks'); // 'tasks' or 'growth'
   const [externalDragOver,setExternalDragOver]=useState(false);
   const [dropPreviewMin,setDropPreviewMin]=useState(null);
   const [panelSearch,setPanelSearch]=useState('');
@@ -2076,7 +2098,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,setHistory,set
           }}
           onTouchEnd={e=>{if(e.touches.length<2)pinchRef.current=null;}}
           onDragOver={e=>{
-            if(!e.dataTransfer.types.includes('paneltaskid'))return;
+            if(!e.dataTransfer.types.includes('paneltaskid')&&!e.dataTransfer.types.includes('growthtaskid'))return;
             e.preventDefault();
             e.dataTransfer.dropEffect='copy';
             setExternalDragOver(true);
@@ -2092,14 +2114,28 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,setHistory,set
           }}
           onDrop={e=>{
             e.preventDefault();
-            const tid=parseInt(e.dataTransfer.getData('panelTaskId'));
             setExternalDragOver(false);setDropPreviewMin(null);
-            if(!tid)return;
-            const t=tasks.find(x=>x.id===tid);
-            if(!t)return;
             const rect=gridRef.current.getBoundingClientRect();
             const y=e.clientY-rect.top;
             const stm=Math.max(dayStart,Math.round((y/PX+dayStart)/15)*15);
+            // Check if it's a growth task
+            const gid=e.dataTransfer.getData('growthTaskId');
+            if(gid){
+              const gt=GROWTH_TASKS.find(g=>g.id===gid);
+              if(gt){
+                setSchedule(p=>[...p,{id:uid(),taskId:null,name:'🌱 '+gt.name,
+                  startTime:stm,endTime:stm+gt.duration,done:false,isBreak:false,isFixed:false,
+                  isPinned:false,layerNote:null,task:null,note:'פיתוח עצמי — 20 דקות'}]
+                  .sort((a,b)=>a.startTime-b.startTime));
+                playSound('drop');
+              }
+              return;
+            }
+            // Regular task from panel
+            const tid=parseInt(e.dataTransfer.getData('panelTaskId'));
+            if(!tid)return;
+            const t=tasks.find(x=>x.id===tid);
+            if(!t)return;
             const dur=taskDur(t);
             setSchedule(p=>[...p,{
               id:uid(),taskId:t.id,name:t.name,
@@ -2445,7 +2481,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,setHistory,set
       </div>
       </div>{/* end Time Grid column */}
 
-      {/* Task Panel (side panel) */}
+      {/* Task Panel (side panel) — with tabs */}
       {showSidePanel&&(
         <div style={{
           width:240,flexShrink:0,direction:'rtl',
@@ -2453,12 +2489,23 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,setHistory,set
           borderRadius:8,padding:'8px',
           maxHeight:containerH+40,overflowY:'auto',
         }}>
-          <div style={{fontSize:12,fontWeight:800,color:'var(--text2)',marginBottom:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-            <span>📦 מאגר משימות</span>
-            <span style={{fontSize:10,color:'var(--text3)',fontWeight:400}}>גרור ← ללוז</span>
+          {/* Tab switcher */}
+          <div style={{display:'flex',gap:0,marginBottom:8,borderRadius:6,overflow:'hidden',border:'1px solid var(--border)'}}>
+            <button onClick={()=>setSidePanelTab('tasks')}
+              style={{flex:1,padding:'6px',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit',border:'none',
+                background:sidePanelTab==='tasks'?'var(--accent)':'transparent',
+                color:sidePanelTab==='tasks'?'#fff':'var(--text3)'}}>
+              📦 מאגר
+            </button>
+            <button onClick={()=>setSidePanelTab('growth')}
+              style={{flex:1,padding:'6px',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit',border:'none',
+                background:sidePanelTab==='growth'?'rgba(34,197,94,.8)':'transparent',
+                color:sidePanelTab==='growth'?'#fff':'var(--text3)'}}>
+              🌱 פיתוח עצמי
+            </button>
           </div>
-          {/* Search + task list */}
-          {(()=>{
+
+          {sidePanelTab==='tasks'&&(()=>{
             const filtered=tasks.filter(t=>{
               if(panelRating&&t.rating!==panelRating)return false;
               if(panelSearch&&!t.name.includes(panelSearch))return false;
@@ -2467,7 +2514,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,setHistory,set
               const ro=['A','B','C','D','E'];
               return ro.indexOf(a.rating)-ro.indexOf(b.rating)||b.matrixScore-a.matrixScore;
             });
-            const RC={A:'var(--ra)',B:'var(--rb)',C:'var(--rc)',D:'var(--rd)',E:'var(--re)'};
+            const RC2={A:'var(--ra)',B:'var(--rb)',C:'var(--rc)',D:'var(--rd)',E:'var(--re)'};
             return(<>
               <input value={panelSearch} onChange={e=>setPanelSearch(e.target.value)}
                 placeholder="חיפוש..." style={{fontSize:11,padding:'4px 8px',marginBottom:6,width:'100%'}}/>
@@ -2477,7 +2524,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,setHistory,set
                     style={{padding:'2px 7px',borderRadius:5,fontSize:10,fontWeight:700,cursor:'pointer',fontFamily:'inherit',
                       border:`1px solid ${panelRating===r?'var(--accent)':'var(--border)'}`,
                       background:panelRating===r?'rgba(99,102,241,.15)':'transparent',
-                      color:panelRating===r?'var(--accent)':r?RC[r]:'var(--text3)'}}>
+                      color:panelRating===r?'var(--accent)':r?RC2[r]:'var(--text3)'}}>
                     {r||'הכל'}
                   </button>
                 ))}
@@ -2500,7 +2547,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,setHistory,set
                         cursor:'grab',opacity:alreadyInSchedule?.7:1,
                         transition:'opacity .15s',
                       }}>
-                      <span style={{background:RC[t.rating],color:'#fff',borderRadius:4,
+                      <span style={{background:RC2[t.rating],color:'#fff',borderRadius:4,
                         padding:'1px 5px',fontSize:10,fontWeight:800,flexShrink:0}}>
                         {t.rating}
                       </span>
@@ -2516,6 +2563,58 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,setHistory,set
               </div>
             </>);
           })()}
+
+          {sidePanelTab==='growth'&&(
+            <div>
+              <div style={{fontSize:10,color:'var(--text3)',marginBottom:8,lineHeight:1.5}}>
+                🌱 כל יום מקבל משימת פיתוח עצמי אחת (20 דק). גרור ← ללוז.
+              </div>
+              <div style={{padding:'8px',background:'rgba(34,197,94,.08)',border:'1px solid rgba(34,197,94,.25)',borderRadius:8,marginBottom:8}}>
+                <div style={{fontSize:10,color:'var(--green)',fontWeight:700,marginBottom:4}}>✨ המשימה של היום:</div>
+                <div style={{fontSize:13,fontWeight:700}}>{getGrowthTaskForDate(new Date().toISOString().split('T')[0]).name}</div>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                {GROWTH_TASKS.map(gt=>{
+                  const alreadyIn=schedule.some(s=>s.name.includes(gt.name));
+                  const isToday=getGrowthTaskForDate(new Date().toISOString().split('T')[0]).id===gt.id;
+                  return(
+                    <div key={gt.id}
+                      draggable
+                      onDragStart={e=>{
+                        e.dataTransfer.setData('growthTaskId',gt.id);
+                        e.dataTransfer.effectAllowed='copy';
+                      }}
+                      onClick={()=>{
+                        if(alreadyIn)return;
+                        const st=schedule.length?schedule[schedule.length-1].endTime:9*60;
+                        setSchedule(p=>[...p,{id:uid(),taskId:null,name:'🌱 '+gt.name,
+                          startTime:st,endTime:st+gt.duration,done:false,isBreak:false,isFixed:false,
+                          isPinned:false,layerNote:null,task:null,note:'פיתוח עצמי — 20 דקות'}]
+                          .sort((a,b)=>a.startTime-b.startTime));
+                      }}
+                      style={{
+                        display:'flex',alignItems:'center',gap:6,
+                        padding:'8px',borderRadius:7,cursor:alreadyIn?'default':'pointer',
+                        background:isToday?'rgba(34,197,94,.12)':alreadyIn?'rgba(34,197,94,.05)':'var(--bg2)',
+                        border:`1px solid ${isToday?'rgba(34,197,94,.4)':alreadyIn?'rgba(34,197,94,.2)':'var(--border)'}`,
+                        opacity:alreadyIn?.5:1,
+                        transition:'.15s',
+                      }}>
+                      <span style={{fontSize:16}}>{gt.name.split(' ')[0]}</span>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:11,fontWeight:600,color:'var(--text)',lineHeight:1.3}}>
+                          {gt.name}
+                        </div>
+                        <div style={{fontSize:9,color:'var(--text3)'}}>{gt.duration} דק · {gt.domain}</div>
+                      </div>
+                      {alreadyIn&&<span style={{fontSize:9,color:'var(--green)'}}>✓</span>}
+                      {isToday&&!alreadyIn&&<span style={{fontSize:9,color:'var(--green)',fontWeight:700}}>היום</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
