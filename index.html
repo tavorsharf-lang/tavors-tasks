@@ -676,10 +676,10 @@ function buildSchedule(tasks,wakeMin,mainTaskId,breakDur,dow){
     cur+=dur;
   }
 
-  // Morning ritual
-  push(null,5,'מיינדפולנס בוקר',false,null);
-  push(null,55,'ארוחת בוקר + ריטואלים',false,null);
-  cur=wakeMin+90;
+  // Morning: breakfast first, then mindfulness
+  push(null,55,'🍳 ארוחת בוקר + צחצוח שיניים + סידור חדר בסיסי + כביסה',false,null);
+  push(null,5,'🧘 מיינדפולנס בוקר',false,null);
+  cur=wakeMin+60;
 
   // Main chosen task
   const main=tasks.find(t=>t.id===mainTaskId);
@@ -688,7 +688,13 @@ function buildSchedule(tasks,wakeMin,mainTaskId,breakDur,dow){
     push(null,breakDur,'הפסקה ('+breakDur+' דקות)',true,null);
   }
 
-  const highEnergyCutoff=wakeMin+90+8*60;
+  const highEnergyCutoff=wakeMin+60+8*60;
+
+  // Physio session (morning)
+  const physio=tasks.find(t=>t.isPhysio);
+  if(physio&&cur<14*60){
+    push(physio,10,'פיזיותרפיה (סשן ראשון)',false,'להקביל: האזנה להקלטות');
+  }
 
   // A tasks
   const aPool=tasks.filter(t=>t.rating==='A'&&t.id!==mainTaskId&&!t.fixedTime&&!t.isMorningRitual&&!t.isPhysio&&!t.isDogWalk);
@@ -696,12 +702,6 @@ function buildSchedule(tasks,wakeMin,mainTaskId,breakDur,dow){
     if(cur>=highEnergyCutoff||cur+taskDur(t)>17*60)break;
     push(t,taskDur(t),null,false,t.layerable?'להקביל: '+t.layerable:null);
     push(null,breakDur,'הפסקה ('+breakDur+' דקות)',true,null);
-  }
-
-  // Physio session
-  const physio=tasks.find(t=>t.isPhysio);
-  if(physio&&cur<14*60){
-    push(physio,10,'פיזיותרפיה (סשן ראשון)',false,'להקביל: האזנה להקלטות');
   }
 
   // B tasks
@@ -712,15 +712,15 @@ function buildSchedule(tasks,wakeMin,mainTaskId,breakDur,dow){
     push(null,breakDur,'הפסקה ('+breakDur+' דקות)',true,null);
   }
 
-  // Dog walk
-  const dog=tasks.find(t=>t.isDogWalk);
-  if(dog&&cur<15*60){
-    push(dog,45,null,false,'להקביל: פודקאסטים, הקלטות שיעורים');
-  }
-
-  // Second physio
+  // Second physio (after B tasks)
   if(physio&&cur<16*60){
     push(physio,10,'פיזיותרפיה (סשן שני)',false,'להקביל');
+  }
+
+  // Dog walk — after all A+B tasks
+  const dog=tasks.find(t=>t.isDogWalk);
+  if(dog){
+    push(dog,45,null,false,'להקביל: פודקאסטים, הקלטות שיעורים');
   }
 
   // Thursday injection
@@ -779,8 +779,8 @@ const SCHEDULE_TEMPLATES={
         items.push({id:uid(),taskId:t?t.id:null,name:label||(t?t.name:''),startTime:cur,endTime:cur+dur,done:false,isBreak:!!brk,isFixed:false,layerNote:layer||null,task:t||null,note:''});
         cur+=dur;
       }
-      push(null,5,'מיינדפולנס בוקר',false);
-      push(null,25,'ארוחת בוקר מהירה',false);
+      push(null,25,'🍳 ארוחת בוקר + צחצוח + סידור + כביסה',false);
+      push(null,5,'🧘 מיינדפולנס בוקר',false);
       cur=wakeMin+30;
       // All A tasks back to back with short 10min breaks
       const aPool=tasks.filter(t=>t.rating==='A'&&!t.fixedTime&&!t.isMorningRitual&&!t.isPhysio&&!t.isDogWalk);
@@ -810,9 +810,9 @@ const SCHEDULE_TEMPLATES={
         items.push({id:uid(),taskId:t?t.id:null,name:label||(t?t.name:''),startTime:cur,endTime:cur+dur,done:false,isBreak:!!brk,isFixed:false,layerNote:layer||null,task:t||null,note:''});
         cur+=dur;
       }
-      push(null,5,'מיינדפולנס בוקר',false);
-      push(null,55,'ארוחת בוקר + ריטואלים',false);
-      cur=wakeMin+90;
+      push(null,55,'🍳 ארוחת בוקר + צחצוח + סידור + כביסה',false);
+      push(null,5,'🧘 מיינדפולנס בוקר',false);
+      cur=wakeMin+60;
       // 2 A tasks morning
       const aPool=tasks.filter(t=>t.rating==='A'&&!t.fixedTime&&!t.isMorningRitual&&!t.isPhysio&&!t.isDogWalk);
       for(const t of aPool.slice(0,2)){
@@ -858,8 +858,8 @@ const SCHEDULE_TEMPLATES={
         items.push({id:uid(),taskId:t?t.id:null,name:label||(t?t.name:''),startTime:cur,endTime:cur+dur,done:false,isBreak:!!brk,isFixed:false,layerNote:layer||null,task:t||null,note:''});
         cur+=dur;
       }
-      push(null,5,'מיינדפולנס בוקר',false);
-      push(null,40,'ארוחת בוקר מזינה',false);
+      push(null,40,'🍳 ארוחת בוקר מזינה + צחצוח + סידור + כביסה',false);
+      push(null,5,'🧘 מיינדפולנס בוקר',false);
       const physio=tasks.find(t=>t.isPhysio);
       if(physio)push(physio,15,'פיזיותרפיה (בוקר)',false);
       // Workout
@@ -901,8 +901,8 @@ const SCHEDULE_TEMPLATES={
         cur+=dur;
       }
       // Morning
-      push(null,5,'מיינדפולנס בוקר',false);
-      push(null,40,'ארוחת בוקר + הכנה',false);
+      push(null,40,'🍳 ארוחת בוקר + צחצוח + סידור + הכנה',false);
+      push(null,5,'🧘 מיינדפולנס בוקר',false);
       const physio=tasks.find(t=>t.isPhysio);
       if(physio)push(physio,10,'פיזיותרפיה (בוקר)',false);
       push(null,15,'התארגנות ויציאה',false);
@@ -938,9 +938,9 @@ const SCHEDULE_TEMPLATES={
         cur+=dur;
       }
       // Morning ritual
-      push(null,5,'מיינדפולנס בוקר',false);
-      push(null,55,'ארוחת בוקר + ריטואלים',false);
-      cur=wakeMin+90;
+      push(null,55,'🍳 ארוחת בוקר + צחצוח + סידור + כביסה',false);
+      push(null,5,'🧘 מיינדפולנס בוקר',false);
+      cur=wakeMin+60;
       // A tasks in morning before classes
       const aPool=tasks.filter(t=>t.rating==='A'&&!t.fixedTime&&!t.isMorningRitual&&!t.isPhysio&&!t.isDogWalk);
       for(const t of aPool.slice(0,2)){
