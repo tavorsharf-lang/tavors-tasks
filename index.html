@@ -70,9 +70,10 @@ function getSmartReminders(task,isFixed){
   const alerts=[];
   const profile=task?.alertProfile||'auto';
 
-  // Travel → add 2 hours before
+  // Travel → alert before based on travel duration
   if(task?.requiresTravel){
-    alerts.push({method:'popup',minutes:120});
+    const travelMin=task.travelDuration||30;
+    alerts.push({method:'popup',minutes:travelMin+10}); // travel time + 10 min buffer
   }
 
   if(profile==='none')return alerts; // only travel if set
@@ -2791,7 +2792,29 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
         </div>
       </div>
 
-      {editItem&&<ScheduleItemEditModal item={editItem} onSave={updated=>{setSchedule(p=>p.map(i=>i.id===updated.id?updated:i));setEditItem(null);}} onClose={()=>setEditItem(null)}/>}
+      {editItem&&<ScheduleItemEditModal item={editItem} onSave={updated=>{
+        setSchedule(p=>{
+          let next=p.map(i=>i.id===updated.id?updated:i);
+          // If travel enabled, add/update travel block before this task
+          if(updated.requiresTravel&&updated.travelDuration){
+            const travelName='🚗 נסיעה ל'+updated.name;
+            // Remove old travel block for this task
+            next=next.filter(i=>!i._travelFor||i._travelFor!==updated.id);
+            // Add new travel block
+            const travelStart=updated.startTime-updated.travelDuration;
+            next.push({id:uid(),taskId:null,name:travelName,
+              startTime:Math.max(0,travelStart),endTime:updated.startTime,
+              done:false,isBreak:false,isFixed:false,isPinned:false,
+              layerNote:null,task:null,note:`${updated.travelDuration} דקות נסיעה`,
+              _travelFor:updated.id});
+          }else{
+            // Remove travel block if travel was disabled
+            next=next.filter(i=>!i._travelFor||i._travelFor!==updated.id);
+          }
+          return next.sort((a,b)=>a.startTime-b.startTime);
+        });
+        setEditItem(null);
+      }} onClose={()=>setEditItem(null)}/>}
       {showAdd&&<AddToScheduleModal tasks={tasks} setTasks={setTasks} setSchedule={setSchedule} onClose={()=>setShowAdd(false)}/>}
     </div>
   );
@@ -2833,9 +2856,12 @@ function ScheduleItemEditModal({item,onSave,onClose}){
       energyRequired:form.energyRequired,energyEffect:form.energyEffect,entryBarrier:form.entryBarrier,
       layerable:form.layerable,dominoEffect:form.dominoEffect,
       alertProfile:form.alertProfile,requiresTravel:form.requiresTravel,
+      travelDuration:form.travelDuration||30,
     }:null;
-    onSave({...item,name:form.name,startTime:stm,endTime:stm+Number(form.durMin),
-      note:form.note.trim()||undefined,task:updatedTask});
+    const result={...item,name:form.name,startTime:stm,endTime:stm+Number(form.durMin),
+      note:form.note.trim()||undefined,task:updatedTask,
+      requiresTravel:form.requiresTravel,travelDuration:form.travelDuration||30};
+    onSave(result);
   }
 
   return(
@@ -2997,6 +3023,14 @@ function ScheduleItemEditModal({item,onSave,onClose}){
                     cursor:'pointer',fontFamily:'inherit'}}>
                   {form.requiresTravel?'🚗 כן':'🏠 לא'}
                 </button>
+                {form.requiresTravel&&(
+                  <div style={{marginTop:6}}>
+                    <label>זמן נסיעה (דקות)</label>
+                    <input type="number" min={5} max={180} step={5} value={form.travelDuration||30}
+                      onChange={e=>set('travelDuration',Number(e.target.value))}
+                      style={{width:'100%'}}/>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -3627,8 +3661,16 @@ function TaskEditModal({task,onSave,onClose}){
                     background:form.requiresTravel?'rgba(99,102,241,.15)':'var(--bg2)',
                     color:form.requiresTravel?'var(--accent2)':'var(--text3)',
                     cursor:'pointer',fontFamily:'inherit',transition:'.2s'}}>
-                  {form.requiresTravel?'🚗 כן — התראה 2 שעות מראש':'🏠 לא — במקום'}
+                  {form.requiresTravel?'🚗 כן':'🏠 לא — במקום'}
                 </button>
+                {form.requiresTravel&&(
+                  <div style={{marginTop:6}}>
+                    <label>זמן נסיעה (דקות)</label>
+                    <input type="number" min={5} max={180} step={5} value={form.travelDuration||30}
+                      onChange={e=>set('travelDuration',Number(e.target.value))}
+                      style={{width:'100%'}}/>
+                  </div>
+                )}
               </div>
             </div>
             {/* Preview */}
