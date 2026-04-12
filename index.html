@@ -638,6 +638,8 @@ function getGrowthTaskForDate(dateKey){
   return GROWTH_TASKS[dayOfYear%GROWTH_TASKS.length];
 }
 
+const FIXED_DAILY_NAMES=['ארוחת בוקר','מיינדפולנס','פיזיותרפיה','תחזוקת קשרים','צ\'ק-אין','Brain dump','טיול עם פיונה','הפסקה','🌱','נסיעה'];
+function isFixedDaily(name){return FIXED_DAILY_NAMES.some(n=>name.includes(n));}
 const DAYS=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
 const MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 
@@ -1896,9 +1898,8 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
   }
 
   // VIEW MODE — Time Grid
-  const FIXED_DAILY_NAMES=['ארוחת בוקר','מיינדפולנס','פיזיותרפיה','תחזוקת קשרים','צ\'ק-אין','Brain dump','טיול עם פיונה','הפסקה','🌱'];
   const dsAll=liveSchedule||schedule;
-  const ds=showOnlyMine?dsAll.filter(i=>!FIXED_DAILY_NAMES.some(n=>i.name.includes(n))&&!i.isBreak):dsAll;
+  const ds=showOnlyMine?dsAll.filter(i=>!isFixedDaily(i.name)&&!i.isBreak):dsAll;
   const nowMinG=new Date().getHours()*60+new Date().getMinutes();
   const focusItem=ds.find(i=>i.startTime<=nowMinG&&i.endTime>nowMinG);
   const dayStartRaw=ds.length?Math.floor((Math.min(...ds.map(i=>i.startTime))-30)/60)*60:420;
@@ -2042,7 +2043,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
         </button>
         <button onClick={()=>{
             if(!window.confirm('למחוק את כל המשימות שהוספת ידנית? (קבועות יישארו)'))return;
-            setSchedule(p=>p.filter(i=>FIXED_DAILY_NAMES.some(n=>i.name.includes(n))||i.isBreak));
+            setSchedule(p=>p.filter(i=>isFixedDaily(i.name)||i.isBreak));
           }}
           style={{padding:'4px 9px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',
             border:'1px solid rgba(239,68,68,.35)',background:'rgba(239,68,68,.07)',color:'#EF4444'}}>
@@ -4628,7 +4629,7 @@ function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,s
                     {name}{isToday?' ✦':''}
                   </div>
                   <div style={{fontSize:11,color:'var(--text3)'}}>{date}</div>
-                  {entries.length>0&&<div style={{fontSize:11,background:'var(--border)',borderRadius:10,padding:'1px 7px',color:'var(--text2)'}}>{entries.length}</div>}
+                  {(()=>{const uc=entries.filter(e=>!isFixedDaily(e.name)&&!e.isBreak).length;return uc>0&&<div style={{fontSize:11,background:'var(--border)',borderRadius:10,padding:'1px 7px',color:'var(--text2)'}}>{uc}</div>;})()}
                   {(()=>{
                     const totalMins=entries.reduce((a,e)=>(e.startTime&&e.endTime?a+(e.endTime-e.startTime):a+30),0);
                     if(!totalMins)return null;
@@ -4652,10 +4653,10 @@ function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,s
                 return <div style={{height:2,background:c,width:pct+'%',transition:'width .4s',marginBottom:0}}/>;
               })()}
 
-              {/* entry pills */}
-              {entries.length>0&&(
+              {/* entry pills — show only user-added tasks */}
+              {(()=>{const userEntries=entries.filter(e=>!isFixedDaily(e.name)&&!e.isBreak);return userEntries.length>0&&(
                 <div style={{padding:'4px 10px 8px',display:'flex',flexWrap:'wrap',gap:5}}>
-                  {entries.map(entry=>(
+                  {userEntries.map(entry=>(
                     <div key={entry.id}
                       draggable
                       onDragStart={e=>{
@@ -4682,7 +4683,7 @@ function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,s
                     </div>
                   ))}
                 </div>
-              )}
+              );})()}
             </div>
           );
         })}
