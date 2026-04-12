@@ -57,7 +57,12 @@ async function gcalCreateEvent(token,summary,startMin,endMin,description,locatio
     headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
     body:JSON.stringify(event)
   });
-  return resp.json();
+  const result=await resp.json();
+  if(result.error){
+    console.error('GCal API error:',result.error.message);
+    throw new Error(result.error.message);
+  }
+  return result;
 }
 
 // Smart reminders based on task type + manual overrides
@@ -1943,7 +1948,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                 const count=await gcalSyncSchedule(schedule,tasks);
                 setGcalMsg(`✓ ${count} אירועים`);
                 setTimeout(()=>setGcalMsg(''),3000);
-              }catch(e){setGcalMsg('שגיאה');setTimeout(()=>setGcalMsg(''),3000);}
+              }catch(e){console.error('GCal:',e);_gcalToken=null;setGcalMsg('שגיאה — נסה שוב');setTimeout(()=>setGcalMsg(''),4000);}
               setGcalSyncing(false);
             }}
             style={gcalMsg.startsWith('✓')?{border:'1px solid var(--green)',color:'var(--green)',background:'rgba(34,197,94,.1)'}:{}}
@@ -1963,7 +1968,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                   setGcalMsg('📥 אין חדשים');
                 }
                 setTimeout(()=>setGcalMsg(''),3000);
-              }catch(e){setGcalMsg('שגיאה');setTimeout(()=>setGcalMsg(''),3000);}
+              }catch(e){console.error('GCal:',e);_gcalToken=null;setGcalMsg('שגיאה — נסה שוב');setTimeout(()=>setGcalMsg(''),4000);}
               setGcalSyncing(false);
             }}
             title="ייבא אירועים מ-Google Calendar לתוך הלוז">
