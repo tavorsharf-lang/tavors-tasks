@@ -96,9 +96,38 @@ function getSmartReminders(task,isFixed){
   return alerts;
 }
 
+// Delete all Tavors events from today before re-syncing
+async function gcalDeleteTodayEvents(token){
+  const now=new Date();
+  const dayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate(),0,0,0).toISOString();
+  const dayEnd=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59).toISOString();
+  // Fetch today's events
+  const resp=await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${dayStart}&timeMax=${dayEnd}&maxResults=100&singleEvents=true`,{
+    headers:{'Authorization':'Bearer '+token}
+  });
+  const data=await resp.json();
+  if(!data.items)return 0;
+  // Delete only events created by our app (have [A]/[B]/[C] prefix or known names)
+  const tavorsMarkers=['[A]','[B]','[C]','[D]','[E]','🧘','🍳','☕','🦵','🐕','📱','💙','🗒️','⚖️','📚','🇬🇧'];
+  const toDelete=data.items.filter(ev=>tavorsMarkers.some(m=>ev.summary&&ev.summary.includes(m)));
+  let deleted=0;
+  for(const ev of toDelete){
+    await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${ev.id}`,{
+      method:'DELETE',
+      headers:{'Authorization':'Bearer '+token}
+    });
+    deleted++;
+  }
+  return deleted;
+}
+
 async function gcalSyncSchedule(schedule,tasks){
   try{
     const token=await gcalAuth();
+    // First: delete previous sync for today
+    const deleted=await gcalDeleteTodayEvents(token);
+    console.log(`🗑️ Deleted ${deleted} old events`);
+    // Then: create fresh events
     let count=0;
     for(const it of schedule){
       if(it.isBreak)continue;
@@ -1777,7 +1806,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,setHistory,set
               setGcalSyncing(false);
             }}
             style={gcalMsg.startsWith('✓')?{border:'1px solid var(--green)',color:'var(--green)',background:'rgba(34,197,94,.1)'}:{}}
-            title="סנכרן ל-Google Calendar">
+            title="סנכרן ל-Google Calendar (מוחק ישנים + יוצר חדשים)">
             {gcalSyncing?'⏳':gcalMsg||'📆 Google'}
           </button>
           <button className="btn btn-ghost btn-sm" style={{position:'relative'}} onClick={()=>setShowTemplates(t=>!t)}>
