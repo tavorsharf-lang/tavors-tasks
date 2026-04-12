@@ -1879,8 +1879,9 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,history,setHis
   const ds=liveSchedule||schedule;
   const nowMinG=new Date().getHours()*60+new Date().getMinutes();
   const focusItem=ds.find(i=>i.startTime<=nowMinG&&i.endTime>nowMinG);
-  const dayStart=ds.length?Math.floor((Math.min(...ds.map(i=>i.startTime))-30)/60)*60:360;
-  const dayEnd=ds.length?Math.ceil((Math.max(...ds.map(i=>i.endTime))+90)/60)*60:1440;
+  const dayStartRaw=ds.length?Math.floor((Math.min(...ds.map(i=>i.startTime))-30)/60)*60:420;
+  const dayStart=Math.min(dayStartRaw,420); // always show from 07:00 at latest
+  const dayEnd=ds.length?Math.max(Math.ceil((Math.max(...ds.map(i=>i.endTime))+90)/60)*60,1380):1380;
   const containerH=(dayEnd-dayStart)*PX;
   const hourLabels=[];
   for(let t=dayStart;t<=dayEnd;t+=60)hourLabels.push(t);
@@ -3831,8 +3832,9 @@ function WeeklyDayGrid({tasks,dateKey,entries,setEntries,onBack,dayLabel,dayDate
   const prevSnapMinRef=useRef(null);
 
   const ds=liveItems||items;
-  const dayStart=ds.length?Math.floor((Math.min(...ds.map(i=>i.startTime))-30)/60)*60:360;
-  const dayEnd=ds.length?Math.ceil((Math.max(...ds.map(i=>i.endTime))+90)/60)*60:1440;
+  const dayStartRaw=ds.length?Math.floor((Math.min(...ds.map(i=>i.startTime))-30)/60)*60:420;
+  const dayStart=Math.min(dayStartRaw,420);
+  const dayEnd=ds.length?Math.max(Math.ceil((Math.max(...ds.map(i=>i.endTime))+90)/60)*60,1380):1380;
   const containerH=(dayEnd-dayStart)*PX;
   const hourLabels=[];
   for(let t=dayStart;t<=dayEnd;t+=60)hourLabels.push(t);
