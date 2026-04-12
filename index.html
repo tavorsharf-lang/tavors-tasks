@@ -1244,8 +1244,8 @@ function DashboardScreen({tasks,setScreen,schedule}){
 
 // ── SCREEN 2: DAILY SCHEDULE ──────────────────────────────────────────
 
-function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,history,setHistory,setWeeklyPlan,parkedItems,setParkedItems,undoFlashTs,isToday:_isToday}){
-  const isToday=_isToday!==undefined?_isToday:true; // default to true for main schedule
+function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:propSetSchedule,history,setHistory,setWeeklyPlan,parkedItems,setParkedItems,undoFlashTs,isToday:_isToday,weeklyPlan:propWeeklyPlan}){
+  const isToday=_isToday!==undefined?_isToday:true;
   const [mode,setMode]=useState(schedule.length>0?'view':'build');
   const [step,setStep]=useState(2);
   function nowIsrael(){
@@ -1494,13 +1494,47 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,history,setHis
   }
   function handleDragEnd(){dragIdx.current=null;setDragOver(null);}
 
-  const today=new Date();
+  const [dayOffset,setDayOffset]=useState(0);
+  const viewDate=new Date();
+  viewDate.setDate(viewDate.getDate()+dayOffset);
+  const today=viewDate;
   const dow=today.getDay();
-  const dateStr=`${today.getDate()}/${today.getMonth()+1}/${today.getFullYear()}`;
+  const dateStr=`${DAYS[dow]}, ${today.getDate()}/${today.getMonth()+1}/${today.getFullYear()}`;
+  const viewDateKey=today.toISOString().split('T')[0];
+  const viewingToday=dayOffset===0;
   const active=tasks.filter(t=>['A','B','C'].includes(t.rating));
 
+  // When viewing another day, use weeklyPlan data
+  function getOtherDaySchedule(dk){
+    return(weeklyPlan[dk]||[]).map(e=>{
+      const t=e.task||tasks.find(x=>x.id===e.taskId)||null;
+      const tm=e.startTime!=null?e.startTime:(e.time?parseMin(e.time):9*60);
+      const dur=e.endTime!=null?e.endTime-tm:(t?taskDur(t):30);
+      return{...e,startTime:tm,endTime:tm+dur,done:e.done||false,isBreak:e.isBreak||false,
+        isFixed:e.isFixed||false,isPinned:e.isPinned||false,task:t,note:e.note||'',
+        layerNote:e.layerNote||null,dependsOn:e.dependsOn||null};
+    }).sort((a,b)=>a.startTime-b.startTime);
+  }
+
+  // Use real schedule for today, weeklyPlan for other days
+  const weeklyPlan=propWeeklyPlan||{};
+  const actualSchedule=viewingToday?propSchedule:getOtherDaySchedule(viewDateKey);
+  const actualSetSchedule=viewingToday?propSetSchedule:(v)=>{
+    const next=typeof v==='function'?v(actualSchedule):v;
+    setWeeklyPlan(prev=>({...prev,[viewDateKey]:next.map(it=>({
+      id:it.id,taskId:it.taskId||null,name:it.name,time:fmtMin(it.startTime),
+      startTime:it.startTime,endTime:it.endTime,note:it.note||'',done:it.done||false,
+      isBreak:it.isBreak||false,isFixed:it.isFixed||false,isPinned:it.isPinned||false,
+      layerNote:it.layerNote||null,dependsOn:it.dependsOn||null,
+    }))}));
+  };
+
+  // Shadow schedule/setSchedule with day-aware versions
+  const schedule=actualSchedule;
+  const setSchedule=actualSetSchedule;
+
   function doBuild(){
-    const s=buildSchedule(active,parseMin(wakeTime),mainId,breakDur,dow,isToday);
+    const s=buildSchedule(active,parseMin(wakeTime),mainId,breakDur,dow,viewingToday);
     setSchedule(s);
     setMode('view');
   }
@@ -1884,7 +1918,14 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,history,setHis
 
       {/* ── Header ── */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-        <h2 style={{fontSize:17,fontWeight:800}}>📋 {dateStr}</h2>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <button className="btn btn-ghost btn-sm" style={{padding:'4px 8px'}} onClick={()=>setDayOffset(d=>d-1)}>←</button>
+          <div style={{textAlign:'center'}}>
+            <h2 style={{fontSize:15,fontWeight:800,margin:0}}>{viewingToday?'📋 היום':'📋 '+dateStr}</h2>
+            {!viewingToday&&<button onClick={()=>setDayOffset(0)} style={{background:'none',border:'none',color:'var(--accent2)',cursor:'pointer',fontSize:10,fontFamily:'inherit'}}>חזור להיום</button>}
+          </div>
+          <button className="btn btn-ghost btn-sm" style={{padding:'4px 8px'}} onClick={()=>setDayOffset(d=>d+1)}>→</button>
+        </div>
         <div style={{display:'flex',gap:5}}>
           <button className="btn btn-ghost btn-sm" onClick={copySchedule}>{copyMsg||'📋 העתק'}</button>
           <button className="btn btn-ghost btn-sm" onClick={exportICS} title="ייצא ל-Apple Calendar">📅 .ics</button>
@@ -5212,7 +5253,7 @@ function App(){
           </div>
           <div className="dual-right">
             {screen==='dashboard'&&<DashboardScreen tasks={tasks} setScreen={setScreen} schedule={schedule}/>}
-            {screen==='schedule'&&<DailyScheduleScreen tasks={tasks} setTasks={setTasks} schedule={schedule} setSchedule={setSchedule} history={history} setHistory={setHistory} setWeeklyPlan={setWeeklyPlan} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>}
+            {screen==='schedule'&&<DailyScheduleScreen tasks={tasks} setTasks={setTasks} schedule={schedule} setSchedule={setSchedule} history={history} setHistory={setHistory} setWeeklyPlan={setWeeklyPlan} weeklyPlan={weeklyPlan} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>}
             {screen==='pressure'&&<PressureModeScreen tasks={tasks} setScreen={setScreen}/>}
             {screen==='tasks'&&<TaskRepositoryScreen tasks={tasks} setTasks={setTasks} history={history}/>}
             {screen==='summary'&&<WeeklySummaryScreen history={history} tasks={tasks} weeklyPlan={weeklyPlan} schedule={schedule}/>}
@@ -5223,7 +5264,7 @@ function App(){
       ):(
         <div className="main-content">
           {screen==='dashboard'&&<DashboardScreen tasks={tasks} setScreen={setScreen} schedule={schedule}/>}
-          {screen==='schedule'&&<DailyScheduleScreen tasks={tasks} setTasks={setTasks} schedule={schedule} setSchedule={setSchedule} history={history} setHistory={setHistory} setWeeklyPlan={setWeeklyPlan} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>}
+          {screen==='schedule'&&<DailyScheduleScreen tasks={tasks} setTasks={setTasks} schedule={schedule} setSchedule={setSchedule} history={history} setHistory={setHistory} setWeeklyPlan={setWeeklyPlan} weeklyPlan={weeklyPlan} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>}
           {screen==='pressure'&&<PressureModeScreen tasks={tasks} setScreen={setScreen}/>}
           {screen==='tasks'&&<TaskRepositoryScreen tasks={tasks} setTasks={setTasks} history={history}/>}
           {screen==='summary'&&<WeeklySummaryScreen history={history} tasks={tasks} weeklyPlan={weeklyPlan} schedule={schedule}/>}
