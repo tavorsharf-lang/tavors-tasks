@@ -1794,6 +1794,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,setHistory,set
             </div>
             <div style={{display:'flex',gap:8}}>
               <button className="big-cta" style={{flex:1,marginTop:0}} onClick={()=>setStep(3)} disabled={!mainId}>המשך ←</button>
+              <button className="btn btn-ghost" onClick={()=>setStep(3)} style={{whiteSpace:'nowrap'}}>דלג →</button>
             </div>
           </div>
         )}
