@@ -96,6 +96,56 @@ function getSmartReminders(task,isFixed){
   return alerts;
 }
 
+// Import events FROM Google Calendar into the app
+async function gcalImportEvents(token,existingSchedule){
+  const now=new Date();
+  const dayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate(),0,0,0).toISOString();
+  const dayEnd=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59).toISOString();
+  const resp=await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${dayStart}&timeMax=${dayEnd}&maxResults=100&singleEvents=true&orderBy=startTime`,{
+    headers:{'Authorization':'Bearer '+token}
+  });
+  const data=await resp.json();
+  if(!data.items)return[];
+  // Filter out events that were created by our app (avoid re-importing)
+  const tavorsMarkers=['[A]','[B]','[C]','[D]','[E]','🧘','🍳','☕','🦵','🐕','📱','💙','🗒️','⚖️','📚','🇬🇧'];
+  const external=data.items.filter(ev=>{
+    if(!ev.summary)return false;
+    if(ev.status==='cancelled')return false;
+    // Skip events created by our app
+    if(tavorsMarkers.some(m=>ev.summary.includes(m)))return false;
+    // Skip all-day events
+    if(ev.start.date&&!ev.start.dateTime)return false;
+    return true;
+  });
+  // Convert to schedule format
+  const imported=[];
+  for(const ev of external){
+    const st=new Date(ev.start.dateTime);
+    const en=new Date(ev.end.dateTime);
+    const startMin=st.getHours()*60+st.getMinutes();
+    const endMin=en.getHours()*60+en.getMinutes();
+    // Skip if already in schedule (same name + same time)
+    const alreadyExists=existingSchedule.some(s=>
+      s.name===ev.summary&&Math.abs(s.startTime-startMin)<5
+    );
+    if(alreadyExists)continue;
+    imported.push({
+      id:++_uid,
+      taskId:null,
+      name:ev.summary,
+      startTime:startMin,
+      endTime:endMin>startMin?endMin:startMin+30,
+      done:false,isBreak:false,isFixed:true,isPinned:false,
+      layerNote:null,
+      task:null,
+      note:[ev.location,ev.description].filter(Boolean).join(' · ').slice(0,100)||'',
+      _fromGcal:true,
+      _gcalId:ev.id,
+    });
+  }
+  return imported;
+}
+
 // Delete all Tavors events from today before re-syncing
 async function gcalDeleteTodayEvents(token){
   const now=new Date();
@@ -1807,7 +1857,26 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,setHistory,set
             }}
             style={gcalMsg.startsWith('✓')?{border:'1px solid var(--green)',color:'var(--green)',background:'rgba(34,197,94,.1)'}:{}}
             title="סנכרן ל-Google Calendar (מוחק ישנים + יוצר חדשים)">
-            {gcalSyncing?'⏳':gcalMsg||'📆 Google'}
+            {gcalSyncing?'⏳':gcalMsg||'📆 שלח'}
+          </button>
+          <button className="btn btn-ghost btn-sm"
+            onClick={async()=>{
+              setGcalSyncing(true);setGcalMsg('');
+              try{
+                const token=await gcalAuth();
+                const imported=await gcalImportEvents(token,schedule);
+                if(imported.length){
+                  setSchedule(p=>[...p,...imported].sort((a,b)=>a.startTime-b.startTime));
+                  setGcalMsg(`📥 +${imported.length}`);
+                }else{
+                  setGcalMsg('📥 אין חדשים');
+                }
+                setTimeout(()=>setGcalMsg(''),3000);
+              }catch(e){setGcalMsg('שגיאה');setTimeout(()=>setGcalMsg(''),3000);}
+              setGcalSyncing(false);
+            }}
+            title="ייבא אירועים מ-Google Calendar לתוך הלוז">
+            📥 ייבא
           </button>
           <button className="btn btn-ghost btn-sm" style={{position:'relative'}} onClick={()=>setShowTemplates(t=>!t)}>
             📐 תבנית
