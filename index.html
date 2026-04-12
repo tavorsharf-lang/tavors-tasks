@@ -695,7 +695,8 @@ function taskDur(t){
 
 function buildSchedule(tasks,wakeMin,mainTaskId,breakDur,dow){
   const items=[];
-  let cur=wakeMin;
+  // Always start at 08:00 regardless of current time
+  let cur=8*60;
 
   function push(t,dur,label,isBreak,layerNote){
     items.push({
@@ -707,54 +708,37 @@ function buildSchedule(tasks,wakeMin,mainTaskId,breakDur,dow){
     cur+=dur;
   }
 
+  // ── FIXED DAILY TASKS ONLY ──
+
   // Morning: breakfast first, then mindfulness
   push(null,55,'🍳 ארוחת בוקר + צחצוח שיניים + סידור חדר בסיסי + כביסה',false,null);
   push(null,5,'🧘 מיינדפולנס בוקר',false,null);
-  cur=wakeMin+60;
 
-  // Main chosen task
+  // Physio session (morning)
+  const physio=tasks.find(t=>t.isPhysio);
+  if(physio){
+    push(physio,10,'פיזיותרפיה (סשן ראשון)',false,'להקביל: האזנה להקלטות');
+  }
+
+  // Main chosen task (if user selected one)
   const main=tasks.find(t=>t.id===mainTaskId);
   if(main&&!main.fixedTime){
     push(main,taskDur(main),null,false,main.layerable?'להקביל: '+main.layerable:null);
     push(null,breakDur,'הפסקה ('+breakDur+' דקות)',true,null);
   }
 
-  const highEnergyCutoff=wakeMin+60+8*60;
-
-  // Physio session (morning)
-  const physio=tasks.find(t=>t.isPhysio);
-  if(physio&&cur<14*60){
-    push(physio,10,'פיזיותרפיה (סשן ראשון)',false,'להקביל: האזנה להקלטות');
+  // Second physio
+  if(physio){
+    items.push({id:uid(),taskId:physio.id,name:'פיזיותרפיה (סשן שני)',startTime:15*60,endTime:15*60+10,done:false,isBreak:false,isFixed:false,layerNote:'להקביל',task:physio});
   }
 
-  // A tasks
-  const aPool=tasks.filter(t=>t.rating==='A'&&t.id!==mainTaskId&&!t.fixedTime&&!t.isMorningRitual&&!t.isPhysio&&!t.isDogWalk);
-  for(const t of aPool){
-    if(cur>=highEnergyCutoff||cur+taskDur(t)>17*60)break;
-    push(t,taskDur(t),null,false,t.layerable?'להקביל: '+t.layerable:null);
-    push(null,breakDur,'הפסקה ('+breakDur+' דקות)',true,null);
-  }
-
-  // B tasks
-  const bPool=tasks.filter(t=>t.rating==='B'&&!t.fixedTime&&!t.isPhysio&&!t.isDogWalk&&!t.isThursdayOnly&&t.id!==mainTaskId);
-  for(const t of bPool.slice(0,2)){
-    if(cur>=16*60)break;
-    push(t,taskDur(t),null,false,t.layerable?'להקביל: '+t.layerable:null);
-    push(null,breakDur,'הפסקה ('+breakDur+' דקות)',true,null);
-  }
-
-  // Second physio (after B tasks)
-  if(physio&&cur<16*60){
-    push(physio,10,'פיזיותרפיה (סשן שני)',false,'להקביל');
-  }
-
-  // Daily growth task (rotates)
+  // Daily growth task (rotates one from pool)
   const todayGrowth=getGrowthTaskForDate(new Date().toISOString().split('T')[0]);
-  if(todayGrowth&&cur<20*60){
+  if(todayGrowth){
     push(null,todayGrowth.duration,'🌱 '+todayGrowth.name,false,null);
   }
 
-  // Dog walk — after all A+B tasks
+  // Dog walk — afternoon
   const dog=tasks.find(t=>t.isDogWalk);
   if(dog){
     push(dog,45,null,false,'להקביל: פודקאסטים, הקלטות שיעורים');
@@ -764,19 +748,6 @@ function buildSchedule(tasks,wakeMin,mainTaskId,breakDur,dow){
   if(dow===4){
     const inj=tasks.find(t=>t.isThursdayOnly);
     if(inj) items.push({id:uid(),taskId:inj.id,name:inj.name,startTime:10*60,endTime:10*60+10,done:false,isBreak:false,isFixed:true,layerNote:null,task:inj});
-  }
-
-  // C tasks afternoon (exclude friends - scheduled at 20:00)
-  const cPool=tasks.filter(t=>t.rating==='C'&&!t.fixedTime&&!t.isMorningRitual&&t.id!==mainTaskId&&t.id!==11);
-  for(const t of cPool.slice(0,2)){
-    if(cur>=19*60)break;
-    push(t,taskDur(t),null,false,null);
-  }
-
-  // Friends / social — default 20:00
-  const friends=tasks.find(t=>t.id===11);
-  if(friends){
-    items.push({id:uid(),taskId:friends.id,name:friends.name,startTime:20*60,endTime:20*60+taskDur(friends),done:false,isBreak:false,isFixed:false,layerNote:friends.layerable?'להקביל: '+friends.layerable:null,task:friends});
   }
 
   // Fixed time tasks
