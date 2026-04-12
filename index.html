@@ -738,7 +738,7 @@ function buildSchedule(tasks,wakeMin,mainTaskId,breakDur,dow,isToday){
   const main=tasks.find(t=>t.id===mainTaskId);
   if(main&&!main.fixedTime){
     push(main,taskDur(main),null,false,main.layerable?'להקביל: '+main.layerable:null);
-    push(null,breakDur,'הפסקה ('+breakDur+' דקות)',true,null);
+    cur+=5; // 5 min gap between tasks
   }
 
   // Second physio
@@ -809,7 +809,7 @@ const SCHEDULE_TEMPLATES={
       for(const t of aPool){
         if(cur>=20*60)break;
         push(t,90,null,false,t.layerable?'להקביל: '+t.layerable:null);
-        push(null,10,'הפסקה קצרה',true);
+        cur+=5;
       }
       // Dog walk as break
       const dog=tasks.find(t=>t.isDogWalk);
@@ -839,7 +839,7 @@ const SCHEDULE_TEMPLATES={
       const aPool=tasks.filter(t=>t.rating==='A'&&!t.fixedTime&&!t.isMorningRitual&&!t.isPhysio&&!t.isDogWalk);
       for(const t of aPool.slice(0,2)){
         push(t,90,null,false,t.layerable?'להקביל: '+t.layerable:null);
-        push(null,20,'הפסקה',true);
+        cur+=5;
       }
       // Dog walk
       const dog=tasks.find(t=>t.isDogWalk);
@@ -851,7 +851,7 @@ const SCHEDULE_TEMPLATES={
       const bPool=tasks.filter(t=>t.rating==='B'&&!t.fixedTime&&!t.isPhysio&&!t.isDogWalk&&!t.isThursdayOnly);
       for(const t of bPool.slice(0,1)){
         push(t,60,null,false);
-        push(null,15,'הפסקה',true);
+        cur+=5;
       }
       // 1 C task
       const cPool=tasks.filter(t=>t.rating==='C'&&!t.fixedTime&&!t.isMorningRitual);
@@ -887,11 +887,11 @@ const SCHEDULE_TEMPLATES={
       // Workout
       const gym=tasks.find(t=>t.id===14);
       if(gym)push(gym,90,'אימון כושר',false,'מוזיקה, פודקאסטים');
-      push(null,20,'מקלחת + הפסקה',true);
+      cur+=5;
       if(physio)push(physio,10,'פיזיותרפיה (אחרי אימון)',false);
       // 1 light A task
       const aPool=tasks.filter(t=>t.rating==='A'&&!t.fixedTime&&!t.isMorningRitual&&!t.isPhysio&&!t.isDogWalk);
-      if(aPool[0]){push(aPool[0],60,null,false);push(null,15,'הפסקה',true);}
+      if(aPool[0]){push(aPool[0],60,null,false);cur+=5;}
       // Dog walk long
       const dog=tasks.find(t=>t.isDogWalk);
       if(dog)push(dog,60,'טיול ארוך עם פיונה',false,'שיחת תחזוקת קשרים + הקלטות');
@@ -939,7 +939,7 @@ const SCHEDULE_TEMPLATES={
       if(physio)push(physio,10,'פיזיותרפיה (ערב)',false);
       // One light task
       const bPool=tasks.filter(t=>t.rating==='B'&&!t.fixedTime&&!t.isPhysio&&!t.isDogWalk&&!t.isThursdayOnly);
-      if(bPool[0]){push(bPool[0],45,null,false);push(null,15,'הפסקה',true);}
+      if(bPool[0]){push(bPool[0],45,null,false);cur+=5;}
 
       // Fixed rituals
       [{time:'18:00',id:22},{time:'23:00',id:23}].forEach(({time,id})=>{
@@ -968,7 +968,7 @@ const SCHEDULE_TEMPLATES={
       for(const t of aPool.slice(0,2)){
         if(cur>=15*60)break; // stop before classes
         push(t,90,null,false,t.layerable?'להקביל: '+t.layerable:null);
-        push(null,15,'הפסקה',true);
+        cur+=5;
       }
       // Physio morning
       const physio=tasks.find(t=>t.isPhysio);
