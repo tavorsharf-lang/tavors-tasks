@@ -4198,7 +4198,9 @@ function getTimeThemeClass(){
 }
 
 function App(){
-  const [screen,setScreen]=useState('dashboard');
+  const [screen,setScreenRaw]=useState('dashboard');
+  const [weeklyKey,setWeeklyKey]=useState(0);
+  function setScreen(s){setScreenRaw(s);if(s==='weekly')setWeeklyKey(k=>k+1);}
   const [isDarkMode,setIsDarkMode]=useState(true);
   const [autoTheme,setAutoTheme]=useState(true); // feature 11
   const [declutterMode,setDeclutterMode]=useState(false); // feature 12
@@ -4639,7 +4641,7 @@ function App(){
             {screen==='pressure'&&<PressureModeScreen tasks={tasks} setScreen={setScreen}/>}
             {screen==='tasks'&&<TaskRepositoryScreen tasks={tasks} setTasks={setTasks}/>}
             {screen==='summary'&&<WeeklySummaryScreen history={history} tasks={tasks} weeklyPlan={weeklyPlan} schedule={schedule}/>}
-            {screen==='weekly'&&<WeeklyScheduleScreen tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>}
+            {screen==='weekly'&&<WeeklyScheduleScreen key={weeklyKey} tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>}
           </div>
         </div>
       ):(
@@ -4649,7 +4651,7 @@ function App(){
           {screen==='pressure'&&<PressureModeScreen tasks={tasks} setScreen={setScreen}/>}
           {screen==='tasks'&&<TaskRepositoryScreen tasks={tasks} setTasks={setTasks}/>}
           {screen==='summary'&&<WeeklySummaryScreen history={history} tasks={tasks} weeklyPlan={weeklyPlan} schedule={schedule}/>}
-          {screen==='weekly'&&<WeeklyScheduleScreen tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>}
+          {screen==='weekly'&&<WeeklyScheduleScreen key={weeklyKey} tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>}
         </div>
       )}
 
