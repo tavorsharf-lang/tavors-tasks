@@ -4975,7 +4975,7 @@ function App(){
             style={{background:dualLayout?'rgba(99,102,241,.15)':'transparent',
               border:`1px solid ${dualLayout?'var(--accent)':'var(--border)'}`,borderRadius:8,
               padding:'4px 9px',cursor:'pointer',fontSize:13,lineHeight:1,transition:'.2s',
-              color:dualLayout?'var(--accent2)':'var(--text3)',display:window.innerWidth>=900?'block':'none'}}
+              color:dualLayout?'var(--accent2)':'var(--text3)'}}
             title="תצוגה דו-עמודית">
             📐
           </button>
@@ -5207,12 +5207,16 @@ function App(){
       )}
 
       {/* ═══ Feature 16: Dual Column Layout (Desktop) ═══ */}
-      {dualLayout&&window.innerWidth>=900?(
+      {dualLayout?(
         <div className="main-content desktop-dual-col">
-          <div className="dual-left">
-            <WeeklyScheduleScreen tasks={tasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan}/>
+          <div className="dual-left"
+            onDragOver={e=>{if(e.dataTransfer.types.includes('paneltaskid'))e.stopPropagation();}}
+            onDrop={e=>{if(e.dataTransfer.types.includes('paneltaskid'))e.stopPropagation();}}>
+            <WeeklyScheduleScreen key={weeklyKey+1000} tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} history={history} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>
           </div>
-          <div className="dual-right">
+          <div className="dual-right"
+            onDragOver={e=>{if(e.dataTransfer.types.includes('weeklytaskid'))e.stopPropagation();}}
+            onDrop={e=>{if(e.dataTransfer.types.includes('weeklytaskid'))e.stopPropagation();}}>
             {screen==='dashboard'&&<DashboardScreen tasks={tasks} setScreen={setScreen} schedule={schedule}/>}
             {screen==='schedule'&&<DailyScheduleScreen tasks={tasks} setTasks={setTasks} schedule={schedule} setSchedule={setSchedule} history={history} setHistory={setHistory} setWeeklyPlan={setWeeklyPlan} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>}
             {screen==='pressure'&&<PressureModeScreen tasks={tasks} setScreen={setScreen}/>}
