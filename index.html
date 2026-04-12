@@ -2640,26 +2640,6 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,history,setHis
 
       </div>{/* end split view container */}
 
-      {/* ── Bottom actions ── */}
-      <div data-declutter-hide style={{display:'flex',gap:5,marginBottom:10,flexWrap:'wrap'}}>
-        <button className="btn btn-ghost btn-sm" onClick={()=>setShowAdd(true)}>+ הוסף</button>
-        <button className="btn btn-ghost btn-sm" onClick={()=>addBreak(15)}>☕ 15′</button>
-        <button className="btn btn-ghost btn-sm" onClick={()=>addBreak(30)}>☕ 30′</button>
-        <button className="btn btn-ghost btn-sm" onClick={()=>addBreak(60)}>☕ שעה</button>
-      </div>
-
-      <button onClick={saveChanges}
-        style={{width:'100%',marginBottom:6,padding:'13px',borderRadius:12,border:'none',
-          background:saveMsg?'var(--green)':'linear-gradient(135deg,#22c55e,#16a34a)',
-          color:'#fff',fontFamily:'Heebo,sans-serif',fontSize:16,fontWeight:700,
-          cursor:'pointer',transition:'background .3s',
-          boxShadow:saveMsg?'0 0 0 2px #22c55e44':'0 4px 16px rgba(34,197,94,.3)'}}>
-        {saveMsg||'💾 שמור שינויים'}
-      </button>
-      <div style={{fontSize:11,color:'var(--text3)',textAlign:'center',marginBottom:6}}>
-        מסנכרן עם הלוז השבועי וסיכום השבוע
-      </div>
-
       {/* ── Parking Lot ── */}
       {parkedItems&&parkedItems.length>0&&(
         <div style={{marginTop:14,padding:'10px 12px',background:'rgba(34,197,94,.04)',border:'1px solid rgba(34,197,94,.2)',borderRadius:10}}>
@@ -2696,6 +2676,24 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,history,setHis
       )}
 
       </div>{/* ═══ END SCROLLABLE CONTENT ═══ */}
+
+      {/* ═══ STICKY BOTTOM BAR ═══ */}
+      <div style={{flexShrink:0,background:'var(--bg)',borderTop:'1px solid var(--border)',padding:'8px 10px'}} data-declutter-hide>
+        <div style={{display:'flex',gap:5,marginBottom:6,flexWrap:'wrap',alignItems:'center'}}>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setShowAdd(true)}>+ הוסף</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>addBreak(15)}>☕ 15′</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>addBreak(30)}>☕ 30′</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>addBreak(60)}>☕ שעה</button>
+          <button onClick={saveChanges}
+            style={{marginRight:'auto',padding:'6px 16px',borderRadius:8,border:'none',
+              background:saveMsg?'var(--green)':'linear-gradient(135deg,#22c55e,#16a34a)',
+              color:'#fff',fontFamily:'Heebo,sans-serif',fontSize:13,fontWeight:700,
+              cursor:'pointer',transition:'background .3s',
+              boxShadow:saveMsg?'none':'0 2px 8px rgba(34,197,94,.3)'}}>
+            {saveMsg||'💾 שמור'}
+          </button>
+        </div>
+      </div>
 
       {editItem&&<ScheduleItemEditModal item={editItem} onSave={updated=>{setSchedule(p=>p.map(i=>i.id===updated.id?updated:i));setEditItem(null);}} onClose={()=>setEditItem(null)}/>}
       {showAdd&&<AddToScheduleModal tasks={tasks} setTasks={setTasks} setSchedule={setSchedule} onClose={()=>setShowAdd(false)}/>}
@@ -5209,14 +5207,10 @@ function App(){
       {/* ═══ Feature 16: Dual Column Layout (Desktop) ═══ */}
       {dualLayout?(
         <div className="main-content desktop-dual-col">
-          <div className="dual-left"
-            onDragOver={e=>{if(e.dataTransfer.types.includes('paneltaskid'))e.stopPropagation();}}
-            onDrop={e=>{if(e.dataTransfer.types.includes('paneltaskid'))e.stopPropagation();}}>
+          <div className="dual-left">
             <WeeklyScheduleScreen key={weeklyKey+1000} tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} history={history} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>
           </div>
-          <div className="dual-right"
-            onDragOver={e=>{if(e.dataTransfer.types.includes('weeklytaskid'))e.stopPropagation();}}
-            onDrop={e=>{if(e.dataTransfer.types.includes('weeklytaskid'))e.stopPropagation();}}>
+          <div className="dual-right">
             {screen==='dashboard'&&<DashboardScreen tasks={tasks} setScreen={setScreen} schedule={schedule}/>}
             {screen==='schedule'&&<DailyScheduleScreen tasks={tasks} setTasks={setTasks} schedule={schedule} setSchedule={setSchedule} history={history} setHistory={setHistory} setWeeklyPlan={setWeeklyPlan} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>}
             {screen==='pressure'&&<PressureModeScreen tasks={tasks} setScreen={setScreen}/>}
