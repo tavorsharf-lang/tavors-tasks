@@ -2819,11 +2819,38 @@ function ScheduleItemEditModal({item,onSave,onClose}){
           <div className="form-row">
             <div>
               <label>שעת התחלה</label>
-              <input type="time" value={form.st} onChange={e=>set('st',e.target.value)}/>
+              <input type="time" value={form.st} onChange={e=>{
+                set('st',e.target.value);
+                // Update duration if end time mode
+                if(form.endTimeMode&&form.et){
+                  const s=parseMin(e.target.value),en=parseMin(form.et);
+                  if(en>s)set('durMin',en-s);
+                }
+              }}/>
             </div>
             <div>
-              <label>משך (דקות)</label>
-              <input type="number" min={5} max={480} step={5} value={form.durMin} onChange={e=>set('durMin',e.target.value)}/>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <label>{form.endTimeMode?'שעת סיום':'משך (דקות)'}</label>
+                <button type="button" onClick={()=>{
+                  if(!form.endTimeMode){
+                    // Switch to end time mode — calculate end time from start+dur
+                    const endMin=parseMin(form.st)+Number(form.durMin);
+                    set('et',fmtMin(endMin));
+                  }
+                  set('endTimeMode',!form.endTimeMode);
+                }} style={{background:'none',border:'none',color:'var(--accent2)',cursor:'pointer',fontSize:10,fontFamily:'inherit'}}>
+                  {form.endTimeMode?'← דקות':'שעה →'}
+                </button>
+              </div>
+              {form.endTimeMode?(
+                <input type="time" value={form.et||fmtMin(parseMin(form.st)+Number(form.durMin))} onChange={e=>{
+                  set('et',e.target.value);
+                  const s=parseMin(form.st),en=parseMin(e.target.value);
+                  if(en>s)set('durMin',en-s);
+                }}/>
+              ):(
+                <input type="number" min={5} max={480} step={5} value={form.durMin} onChange={e=>set('durMin',e.target.value)}/>
+              )}
             </div>
           </div>
           <div className="form-row">
@@ -2957,6 +2984,8 @@ function AddToScheduleModal({tasks,setSchedule,setTasks,onClose}){
   const [sel,setSel]=useState('');
   const [st,setSt]=useState('12:00');
   const [dur,setDur]=useState(30);
+  const [endTimeMode,setEndTimeMode]=useState(false);
+  const [et,setEt]=useState('12:30');
   // full task fields for new task
   const [form,setForm]=useState({
     name:'',rating:'C',quadrant:2,domain:'',matrixScore:20,
@@ -3018,15 +3047,34 @@ function AddToScheduleModal({tasks,setSchedule,setTasks,onClose}){
         </div>
 
         <div className="form-grid">
-          {/* shared: time + duration */}
+          {/* shared: time + duration/end time */}
           <div className="form-row">
             <div>
               <label>שעת התחלה</label>
-              <input type="time" value={st} onChange={e=>setSt(e.target.value)}/>
+              <input type="time" value={st} onChange={e=>{
+                setSt(e.target.value);
+                if(endTimeMode){const s=parseMin(e.target.value),en=parseMin(et);if(en>s)setDur(en-s);}
+              }}/>
             </div>
             <div>
-              <label>משך (דקות)</label>
-              <input type="number" min={5} max={480} step={5} value={dur} onChange={e=>setDur(Number(e.target.value))}/>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <label>{endTimeMode?'שעת סיום':'משך (דקות)'}</label>
+                <button type="button" onClick={()=>{
+                  if(!endTimeMode)setEt(fmtMin(parseMin(st)+dur));
+                  setEndTimeMode(m=>!m);
+                }} style={{background:'none',border:'none',color:'var(--accent2)',cursor:'pointer',fontSize:10,fontFamily:'inherit'}}>
+                  {endTimeMode?'← דקות':'שעה →'}
+                </button>
+              </div>
+              {endTimeMode?(
+                <input type="time" value={et} onChange={e=>{
+                  setEt(e.target.value);
+                  const s=parseMin(st),en=parseMin(e.target.value);
+                  if(en>s)setDur(en-s);
+                }}/>
+              ):(
+                <input type="number" min={5} max={480} step={5} value={dur} onChange={e=>setDur(Number(e.target.value))}/>
+              )}
             </div>
           </div>
 
