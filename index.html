@@ -113,17 +113,22 @@ async function gcalImportEvents(token,existingSchedule){
     if(ev.status==='cancelled')return false;
     // Skip events created by our app
     if(tavorsMarkers.some(m=>ev.summary.includes(m)))return false;
-    // Skip all-day events
-    if(ev.start.date&&!ev.start.dateTime)return false;
     return true;
   });
   // Convert to schedule format
   const imported=[];
   for(const ev of external){
-    const st=new Date(ev.start.dateTime);
-    const en=new Date(ev.end.dateTime);
-    const startMin=st.getHours()*60+st.getMinutes();
-    const endMin=en.getHours()*60+en.getMinutes();
+    const isAllDay=!ev.start.dateTime;
+    let startMin,endMin;
+    if(isAllDay){
+      startMin=8*60; // all-day events show at 08:00
+      endMin=8*60+30;
+    }else{
+      const st=new Date(ev.start.dateTime);
+      const en=new Date(ev.end.dateTime);
+      startMin=st.getHours()*60+st.getMinutes();
+      endMin=en.getHours()*60+en.getMinutes();
+    }
     // Skip if already in schedule (same name + same time)
     const alreadyExists=existingSchedule.some(s=>
       s.name===ev.summary&&Math.abs(s.startTime-startMin)<5
