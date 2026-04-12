@@ -2063,9 +2063,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,setHistory,set
 
             return(
               <div key={item.id}
-                onMouseEnter={e=>{if(!draggingId&&!('ontouchstart' in window))setHoverInfo({item,x:e.clientX,y:e.clientY});}}
-                onMouseLeave={()=>setHoverInfo(null)}
-                style={{
+                                                style={{
                   position:'absolute',top:topPx,left:cardLeft,right:cardRight,height:h,
                   background:holoBg,
                   backdropFilter:isDragging?'blur(10px)':undefined,
@@ -2395,46 +2393,6 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,setHistory,set
       )}
 
       </div>{/* end split view container */}
-
-      {/* ── Hover Tooltip ── */}
-      {hoverInfo&&!draggingId&&(()=>{
-        const{item,x,y}=hoverInfo;
-        const t=item.task;
-        const dl=t?.deadline&&t.deadline!=='weekly-thursday'?daysLeft(t.deadline):null;
-        const DC2={'hard-deadline':'🔴 דדליין קשיח','growing':'🟠 הנזק גדל','fixed-daily':'🟡 נזק יומי','zero':'🟢 אפס נזק'};
-        return(
-          <div style={{
-            position:'fixed',
-            top:Math.min(y-10,window.innerHeight-260),
-            left:Math.max(10,x-250),
-            width:240,
-            background:'var(--bg3)',
-            border:'1px solid var(--accent)',
-            borderRadius:12,
-            padding:'12px 14px',
-            zIndex:500,
-            boxShadow:'0 12px 40px rgba(0,0,0,.6)',
-            pointerEvents:'none',
-            fontSize:12,
-            lineHeight:1.6,
-          }}>
-            <div style={{fontWeight:800,fontSize:13,marginBottom:8,color:'var(--text)'}}>{item.name}</div>
-            {t&&<>
-              <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:6}}>
-                {t.rating&&<span style={{background:`var(--r${t.rating.toLowerCase()})`,color:'#fff',borderRadius:5,padding:'1px 7px',fontWeight:700,fontSize:11}}>{t.rating}</span>}
-                {t.domain&&<span style={{color:'var(--text2)'}}>{t.domain}</span>}
-              </div>
-              {dl!==null&&<div style={{color:dlColor(dl),fontWeight:700}}>⏳ {dl} ימים לדדליין</div>}
-              {t.damageType&&<div style={{color:'var(--text2)'}}>{DC2[t.damageType]||t.damageType}</div>}
-              {t.energyRequired&&<div style={{color:'var(--text3)'}}>⚡ אנרגיה: {t.energyRequired}</div>}
-              {t.dominoEffect&&<div style={{color:'var(--text3)',marginTop:4,borderTop:'1px solid var(--border)',paddingTop:4}}>🎯 {t.dominoEffect}</div>}
-              {t.consequences&&<div style={{color:'var(--red)',marginTop:4,fontSize:11}}>⚠️ {t.consequences}</div>}
-            </>}
-            {item.note&&<div style={{color:'var(--accent2)',marginTop:4}}>📝 {item.note}</div>}
-            {item.layerNote&&<div style={{color:'var(--text3)',marginTop:2}}>🎧 {item.layerNote}</div>}
-          </div>
-        );
-      })()}
 
       {/* ── Bottom actions ── */}
       <div data-declutter-hide style={{display:'flex',gap:5,marginBottom:10,flexWrap:'wrap'}}>
@@ -3686,8 +3644,7 @@ function WeeklyDayGrid({tasks,dateKey,entries,setEntries,onBack,dayLabel,dayDate
               return(
                 <div key={item.id}
                   onMouseEnter={e=>{if(!draggingId&&!('ontouchstart' in window))setHoverInfo({item:{...item,task:t},x:e.clientX,y:e.clientY});}}
-                  onMouseLeave={()=>setHoverInfo(null)}
-                  style={{
+                                    style={{
                     position:'absolute',top:topPx,left:cardLeft,right:cardRight,height:h,
                     background:item.done?'rgba(34,197,94,.08)':'var(--card)',
                     border:item.isPinned?'2px solid #EAB308':`1px solid var(--border)`,
@@ -3773,32 +3730,6 @@ function WeeklyDayGrid({tasks,dateKey,entries,setEntries,onBack,dayLabel,dayDate
           </div>
         </div>
       )}
-
-      {/* Hover tooltip */}
-      {hoverInfo&&!draggingId&&(()=>{
-        const{item,x,y}=hoverInfo;
-        const t=item.task;
-        const dl=t?.deadline&&t.deadline!=='weekly-thursday'?daysLeft(t.deadline):null;
-        const DC2={'hard-deadline':'🔴 דדליין קשיח','growing':'🟠 הנזק גדל','fixed-daily':'🟡 נזק יומי','zero':'🟢 אפס נזק'};
-        return(
-          <div style={{position:'fixed',top:Math.min(y-10,window.innerHeight-200),left:Math.max(10,x-250),
-            width:230,background:'var(--bg3)',border:'1px solid var(--accent)',borderRadius:12,
-            padding:'10px 12px',zIndex:500,boxShadow:'0 12px 40px rgba(0,0,0,.6)',pointerEvents:'none',fontSize:12,lineHeight:1.6}}>
-            <div style={{fontWeight:800,fontSize:13,marginBottom:6}}>{item.name}</div>
-            {t&&<>
-              <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:4}}>
-                {t.rating&&<span style={{background:`var(--r${t.rating.toLowerCase()})`,color:'#fff',borderRadius:5,padding:'1px 7px',fontWeight:700,fontSize:11}}>{t.rating}</span>}
-                {t.domain&&<span style={{color:'var(--text2)'}}>{t.domain}</span>}
-              </div>
-              {dl!==null&&<div style={{color:dlColor(dl),fontWeight:700}}>⏳ {dl} ימים לדדליין</div>}
-              {t.damageType&&<div style={{color:'var(--text2)'}}>{DC2[t.damageType]}</div>}
-              {t.energyRequired&&<div style={{color:'var(--text3)'}}>⚡ {t.energyRequired}</div>}
-              {t.dominoEffect&&<div style={{color:'var(--text3)',marginTop:3,borderTop:'1px solid var(--border)',paddingTop:3}}>🎯 {t.dominoEffect}</div>}
-            </>}
-            {item.note&&<div style={{color:'var(--accent2)',marginTop:3}}>📝 {item.note}</div>}
-          </div>
-        );
-      })()}
 
       {/* Add from repository */}
       <div data-declutter-hide style={{display:'flex',gap:5,marginBottom:8,flexWrap:'wrap'}}>
