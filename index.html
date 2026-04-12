@@ -2153,7 +2153,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
           }}
           onTouchEnd={e=>{if(e.touches.length<2)pinchRef.current=null;}}
           onDragOver={e=>{
-            if(!e.dataTransfer.types.includes('paneltaskid')&&!e.dataTransfer.types.includes('growthtaskid')&&!e.dataTransfer.types.includes('weeklyentryjson'))return;
+            if(!e.dataTransfer.types.includes('paneltaskid')&&!e.dataTransfer.types.includes('growthtaskid')&&!e.dataTransfer.types.includes('weeklyentryjson')&&!e.dataTransfer.types.includes('breakdur'))return;
             e.preventDefault();
             e.dataTransfer.dropEffect='copy';
             setExternalDragOver(true);
@@ -2173,6 +2173,17 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
             const rect=gridRef.current.getBoundingClientRect();
             const y=e.clientY-rect.top;
             const stm=Math.max(dayStart,Math.round((y/PX+dayStart)/15)*15);
+            // Check if it's a break dragged from bottom bar
+            const breakDur=e.dataTransfer.getData('breakDur');
+            if(breakDur){
+              const d=parseInt(breakDur);
+              setSchedule(p=>[...p,{id:uid(),taskId:null,name:`הפסקה (${d} דקות)`,
+                startTime:stm,endTime:stm+d,done:false,isBreak:true,isFixed:false,
+                isPinned:false,layerNote:null,task:null,note:''}]
+                .sort((a,b)=>a.startTime-b.startTime));
+              playSound('drop');
+              return;
+            }
             // Check if it's a weekly entry dragged from weekly panel
             const weeklyJson=e.dataTransfer.getData('weeklyEntryJson');
             if(weeklyJson){
@@ -2746,9 +2757,17 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
       <div style={{flexShrink:0,background:'var(--bg)',borderTop:'1px solid var(--border)',padding:'8px 10px'}} data-declutter-hide>
         <div style={{display:'flex',gap:5,marginBottom:6,flexWrap:'wrap',alignItems:'center'}}>
           <button className="btn btn-ghost btn-sm" onClick={()=>setShowAdd(true)}>+ הוסף</button>
-          <button className="btn btn-ghost btn-sm" onClick={()=>addBreak(15)}>☕ 15′</button>
-          <button className="btn btn-ghost btn-sm" onClick={()=>addBreak(30)}>☕ 30′</button>
-          <button className="btn btn-ghost btn-sm" onClick={()=>addBreak(60)}>☕ שעה</button>
+          {[15,30,60].map(d=>(
+            <button key={d} className="btn btn-ghost btn-sm"
+              draggable
+              onDragStart={e=>{
+                e.dataTransfer.setData('breakDur',String(d));
+                e.dataTransfer.effectAllowed='copy';
+              }}
+              onClick={()=>addBreak(d)}>
+              ☕ {d===60?'שעה':d+'′'}
+            </button>
+          ))}
           <button onClick={saveChanges}
             style={{marginRight:'auto',padding:'6px 16px',borderRadius:8,border:'none',
               background:saveMsg?'var(--green)':'linear-gradient(135deg,#22c55e,#16a34a)',
