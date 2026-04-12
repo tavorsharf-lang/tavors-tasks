@@ -4420,8 +4420,9 @@ function WeeklyAddModal({tasks,initial,onSave,onClose}){
 
 // ── SCREEN: MONTHLY + YEARLY CALENDAR ─────────────────────────────────
 
-function MonthlyYearlyScreen({tasks,weeklyPlan,setWeeklyPlan,setScreen}){
+function MonthlyYearlyScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,setHistory,parkedItems,setParkedItems,undoFlashTs,setScreen}){
   const [view,setView]=useState('month'); // 'month' or 'year'
+  const [expandDay,setExpandDay]=useState(null);
   const today=new Date();
   const [monthOffset,setMonthOffset]=useState(0);
 
@@ -4452,6 +4453,55 @@ function MonthlyYearlyScreen({tasks,weeklyPlan,setWeeklyPlan,setScreen}){
   const viewDate=new Date(today.getFullYear(),today.getMonth()+monthOffset,1);
   const viewYear=viewDate.getFullYear();
   const viewMonth=viewDate.getMonth();
+
+  // ── Expand day: full DailyScheduleScreen ──
+  if(expandDay){
+    function weeklyToSchedule(entries){
+      return(entries||[]).map(e=>{
+        const t=e.task||tasks.find(x=>x.id===e.taskId)||null;
+        const tm=e.startTime!=null?e.startTime:(e.time?parseMin(e.time):9*60);
+        const dur=e.endTime!=null?e.endTime-tm:(t?taskDur(t):30);
+        return{id:e.id,taskId:e.taskId||null,name:e.name,startTime:tm,endTime:tm+dur,
+          done:e.done||false,isBreak:e.isBreak||false,isFixed:e.isFixed||false,isPinned:e.isPinned||false,
+          layerNote:e.layerNote||null,task:t,note:e.note||'',dependsOn:e.dependsOn||null,splitGroup:e.splitGroup||null};
+      }).sort((a,b)=>a.startTime-b.startTime);
+    }
+    function setDaySchedule(v){
+      setWeeklyPlan(prev=>{
+        const current=weeklyToSchedule(prev[expandDay]||[]);
+        const next=typeof v==='function'?v(current):v;
+        const entries=next.map(it=>({
+          id:it.id,taskId:it.taskId||null,name:it.name,time:fmtMin(it.startTime),
+          startTime:it.startTime,endTime:it.endTime,note:it.note||'',done:it.done||false,
+          isBreak:it.isBreak||false,isFixed:it.isFixed||false,isPinned:it.isPinned||false,
+          layerNote:it.layerNote||null,dependsOn:it.dependsOn||null,splitGroup:it.splitGroup||null,
+        }));
+        return{...prev,[expandDay]:entries};
+      });
+    }
+    const daySchedule=weeklyToSchedule(weeklyPlan[expandDay]||[]);
+    const parts=expandDay.split('-');
+    const expandDate=new Date(Number(parts[0]),Number(parts[1])-1,Number(parts[2]));
+    const dayLabel=DAYS[expandDate.getDay()]+' — '+expandDate.getDate()+'/'+Number(parts[1]);
+
+    return(
+      <div className="fi">
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setExpandDay(null)}>← חזור לחודשי</button>
+          <div>
+            <div style={{fontSize:16,fontWeight:800}}>{dayLabel}</div>
+            <div style={{fontSize:11,color:'var(--text3)'}}>עריכה מלאה · כל השינויים נשמרים</div>
+          </div>
+        </div>
+        <DailyScheduleScreen
+          tasks={tasks} setTasks={setTasks}
+          schedule={daySchedule} setSchedule={setDaySchedule}
+          setHistory={setHistory} setWeeklyPlan={setWeeklyPlan}
+          parkedItems={parkedItems} setParkedItems={setParkedItems}
+          undoFlashTs={undoFlashTs}/>
+      </div>
+    );
+  }
 
   if(view==='year'){
     return(
@@ -4544,12 +4594,7 @@ function MonthlyYearlyScreen({tasks,weeklyPlan,setWeeklyPlan,setScreen}){
 
           return(
             <div key={i}
-              onClick={()=>{
-                // Navigate to weekly view with this day expanded
-                // Store in localStorage for the weekly screen to pick up
-                localStorage.setItem('tavors_expand_day',dk);
-                setScreen('weekly');
-              }}
+              onClick={()=>setExpandDay(dk)}
               style={{
                 background:'var(--card)',
                 border:`1.5px solid ${isToday?'var(--accent)':entries.length?'var(--border)':'rgba(255,255,255,.05)'}`,
@@ -5057,7 +5102,7 @@ function App(){
             {screen==='tasks'&&<TaskRepositoryScreen tasks={tasks} setTasks={setTasks}/>}
             {screen==='summary'&&<WeeklySummaryScreen history={history} tasks={tasks} weeklyPlan={weeklyPlan} schedule={schedule}/>}
             {screen==='weekly'&&<WeeklyScheduleScreen key={weeklyKey} tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>}
-            {screen==='monthly'&&<MonthlyYearlyScreen tasks={tasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} setScreen={setScreen}/>}
+            {screen==='monthly'&&<MonthlyYearlyScreen tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs} setScreen={setScreen}/>}
           </div>
         </div>
       ):(
@@ -5068,7 +5113,7 @@ function App(){
           {screen==='tasks'&&<TaskRepositoryScreen tasks={tasks} setTasks={setTasks}/>}
           {screen==='summary'&&<WeeklySummaryScreen history={history} tasks={tasks} weeklyPlan={weeklyPlan} schedule={schedule}/>}
           {screen==='weekly'&&<WeeklyScheduleScreen key={weeklyKey} tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>}
-          {screen==='monthly'&&<MonthlyYearlyScreen tasks={tasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} setScreen={setScreen}/>}
+          {screen==='monthly'&&<MonthlyYearlyScreen tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs} setScreen={setScreen}/>}
         </div>
       )}
 
