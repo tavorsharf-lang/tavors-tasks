@@ -437,6 +437,30 @@ function startListeners(){
   console.log('👂 listeners active for room:',_syncRoom);
 }
 
+// ── Seed calendar events into weekly plan (one-time) ──
+(function seedCalendarEvents(){
+  if(localStorage.getItem('tavors_cal_seeded'))return;
+  const wp=JSON.parse(localStorage.getItem('tavors_weekly')||'{}');
+  const events=[
+    {dk:'2026-04-14',name:'ריפוי בעיסוק',time:'12:10',startTime:12*60+10,endTime:13*60+10,isFixed:true,requiresTravel:true},
+    {dk:'2026-04-14',name:'תספורת',time:'19:20',startTime:19*60+20,endTime:20*60+20,isFixed:true,requiresTravel:true},
+    {dk:'2026-04-15',name:'קליניקה שופטים (יום שלם)',time:'08:00',startTime:8*60,endTime:8*60+30,isFixed:true},
+    {dk:'2026-04-16',name:'פסיכולוג',time:'18:30',startTime:18*60+30,endTime:19*60+30,isFixed:true,requiresTravel:true},
+    {dk:'2026-06-03',name:'🎉 חתונה לדוד',time:'08:00',startTime:8*60,endTime:8*60+30,isFixed:true},
+    {dk:'2026-06-21',name:'🎉 חתונה לאליה ותהילה',time:'08:00',startTime:8*60,endTime:8*60+30,isFixed:true},
+    {dk:'2026-08-06',name:'שיננית יד בנימין',time:'18:40',startTime:18*60+40,endTime:19*60+40,isFixed:true,requiresTravel:true},
+  ];
+  events.forEach(ev=>{
+    if(!wp[ev.dk])wp[ev.dk]=[];
+    if(!wp[ev.dk].some(e=>e.name===ev.name)){
+      wp[ev.dk].push({id:Date.now()+Math.random(),taskId:null,name:ev.name,time:ev.time,startTime:ev.startTime,endTime:ev.endTime,
+        note:'',done:false,isBreak:false,isFixed:ev.isFixed||false,isPinned:false,requiresTravel:ev.requiresTravel||false});
+    }
+  });
+  localStorage.setItem('tavors_weekly',JSON.stringify(wp));
+  localStorage.setItem('tavors_cal_seeded','1');
+})();
+
 // Auto-connect if room was previously saved
 if(FIREBASE_CONFIG.apiKey&&_syncRoom){
   initFirebase();
@@ -4251,6 +4275,179 @@ function WeeklyAddModal({tasks,initial,onSave,onClose}){
   );
 }
 
+// ── SCREEN: MONTHLY + YEARLY CALENDAR ─────────────────────────────────
+
+function MonthlyYearlyScreen({tasks,weeklyPlan,setWeeklyPlan,setScreen}){
+  const [view,setView]=useState('month'); // 'month' or 'year'
+  const today=new Date();
+  const [monthOffset,setMonthOffset]=useState(0);
+
+  const MNAMES=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  const DNAMES=['א','ב','ג','ד','ה','ו','ש'];
+
+  function getMonthData(year,month){
+    const first=new Date(year,month,1);
+    const startDay=first.getDay(); // 0=Sun
+    const daysInMonth=new Date(year,month+1,0).getDate();
+    const cells=[];
+    // Empty cells before first day
+    for(let i=0;i<startDay;i++)cells.push(null);
+    for(let d=1;d<=daysInMonth;d++)cells.push(d);
+    return cells;
+  }
+
+  function dayEntries(year,month,day){
+    const dk=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    return weeklyPlan[dk]||[];
+  }
+
+  function dayKey(year,month,day){
+    return`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  }
+
+  // Current viewed month
+  const viewDate=new Date(today.getFullYear(),today.getMonth()+monthOffset,1);
+  const viewYear=viewDate.getFullYear();
+  const viewMonth=viewDate.getMonth();
+
+  if(view==='year'){
+    return(
+      <div className="fi">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setView('month')}>← חודשי</button>
+          <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <button className="btn btn-ghost btn-sm" onClick={()=>setMonthOffset(o=>o-12)}>←</button>
+            <span style={{fontSize:18,fontWeight:900}}>{viewYear}</span>
+            <button className="btn btn-ghost btn-sm" onClick={()=>setMonthOffset(o=>o+12)}>→</button>
+          </div>
+          <div/>
+        </div>
+
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
+          {Array.from({length:12},(_,mi)=>{
+            const cells=getMonthData(viewYear,mi);
+            const isCurrentMonth=viewYear===today.getFullYear()&&mi===today.getMonth();
+            // Count tasks this month
+            let totalTasks=0;
+            cells.forEach(d=>{if(d)totalTasks+=dayEntries(viewYear,mi,d).length;});
+            return(
+              <div key={mi}
+                onClick={()=>{setMonthOffset((viewYear-today.getFullYear())*12+(mi-today.getMonth()));setView('month');}}
+                style={{background:'var(--card)',border:`1px solid ${isCurrentMonth?'var(--accent)':'var(--border)'}`,
+                  borderRadius:10,padding:'8px',cursor:'pointer',transition:'.15s'}}>
+                <div style={{fontSize:12,fontWeight:700,marginBottom:6,color:isCurrentMonth?'var(--accent2)':'var(--text)',
+                  display:'flex',justifyContent:'space-between'}}>
+                  <span>{MNAMES[mi]}</span>
+                  {totalTasks>0&&<span style={{fontSize:10,color:'var(--text3)',background:'var(--bg2)',borderRadius:8,padding:'1px 6px'}}>{totalTasks}</span>}
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:1,fontSize:8}}>
+                  {cells.map((d,i)=>{
+                    if(!d)return<div key={i}/>;
+                    const entries=dayEntries(viewYear,mi,d);
+                    const isToday=viewYear===today.getFullYear()&&mi===today.getMonth()&&d===today.getDate();
+                    const hasA=entries.some(e=>{const t=tasks.find(x=>x.id===e.taskId);return t?.rating==='A';});
+                    const bg=isToday?'var(--accent)':hasA?'rgba(220,38,38,.4)':entries.length>3?'rgba(234,179,8,.3)':entries.length>0?'rgba(34,197,94,.2)':'transparent';
+                    return(
+                      <div key={i} style={{width:'100%',aspectRatio:'1',display:'flex',alignItems:'center',justifyContent:'center',
+                        borderRadius:3,background:bg,color:isToday?'#fff':'var(--text3)',fontWeight:isToday?800:400}}>
+                        {d}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // MONTH VIEW
+  const cells=getMonthData(viewYear,viewMonth);
+
+  return(
+    <div className="fi">
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+        <button className="btn btn-ghost btn-sm" onClick={()=>setMonthOffset(o=>o-1)}>← הקודם</button>
+        <div style={{textAlign:'center'}}>
+          <div style={{fontSize:18,fontWeight:900}}>{MNAMES[viewMonth]} {viewYear}</div>
+          {monthOffset!==0&&<button onClick={()=>setMonthOffset(0)} style={{background:'none',border:'none',color:'var(--accent2)',cursor:'pointer',fontSize:11,fontFamily:'inherit'}}>חזור להיום</button>}
+        </div>
+        <button className="btn btn-ghost btn-sm" onClick={()=>setMonthOffset(o=>o+1)}>הבא →</button>
+      </div>
+
+      <div style={{display:'flex',gap:6,marginBottom:10}}>
+        <button className="btn btn-ghost btn-sm" onClick={()=>setView('year')}>📅 תצוגה שנתית</button>
+      </div>
+
+      {/* Day headers */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:4,marginBottom:4}}>
+        {DNAMES.map(d=>(
+          <div key={d} style={{textAlign:'center',fontSize:11,fontWeight:700,color:'var(--text3)',padding:'4px 0'}}>{d}</div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:4}}>
+        {cells.map((d,i)=>{
+          if(!d)return<div key={i}/>;
+          const dk=dayKey(viewYear,viewMonth,d);
+          const entries=weeklyPlan[dk]||[];
+          const isToday=viewYear===today.getFullYear()&&viewMonth===today.getMonth()&&d===today.getDate();
+          const hasA=entries.some(e=>{const t=tasks.find(x=>x.id===e.taskId);return t?.rating==='A';});
+          const totalMins=entries.reduce((a,e)=>(e.startTime&&e.endTime?a+(e.endTime-e.startTime):a+30),0);
+          const loadPct=Math.min(100,Math.round(totalMins/(16*60)*100));
+
+          return(
+            <div key={i}
+              onClick={()=>{
+                // Navigate to weekly view with this day expanded
+                // Store in localStorage for the weekly screen to pick up
+                localStorage.setItem('tavors_expand_day',dk);
+                setScreen('weekly');
+              }}
+              style={{
+                background:'var(--card)',
+                border:`1.5px solid ${isToday?'var(--accent)':entries.length?'var(--border)':'rgba(255,255,255,.05)'}`,
+                borderRadius:8,padding:'6px',minHeight:70,cursor:'pointer',
+                transition:'.15s',position:'relative',overflow:'hidden',
+              }}>
+              {/* Load bar at bottom */}
+              {loadPct>0&&<div style={{position:'absolute',bottom:0,left:0,right:0,height:3,
+                background:loadPct>85?'var(--red)':loadPct>60?'var(--orange)':'var(--green)',opacity:.5}}/>}
+
+              {/* Day number */}
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:3}}>
+                <span style={{
+                  fontSize:14,fontWeight:isToday?900:600,
+                  color:isToday?'var(--accent2)':'var(--text)',
+                  background:isToday?'rgba(99,102,241,.2)':'transparent',
+                  borderRadius:6,padding:isToday?'1px 6px':'0',
+                }}>{d}</span>
+                {hasA&&<span style={{fontSize:8,background:'rgba(220,38,38,.7)',color:'#fff',borderRadius:3,padding:'0 3px',fontWeight:700}}>A</span>}
+              </div>
+
+              {/* Mini event list */}
+              {entries.slice(0,3).map((e,j)=>{
+                const t=tasks.find(x=>x.id===e.taskId);
+                return(
+                  <div key={j} style={{fontSize:9,color:'var(--text2)',overflow:'hidden',textOverflow:'ellipsis',
+                    whiteSpace:'nowrap',lineHeight:1.4,paddingRight:2}}>
+                    <span style={{color:t?RC[t.rating]||'var(--text3)':'var(--text3)',fontWeight:600}}>
+                      {e.time||'•'}</span> {e.name?.slice(0,12)}
+                  </div>
+                );
+              })}
+              {entries.length>3&&<div style={{fontSize:8,color:'var(--text3)'}}>+{entries.length-3} עוד</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── APP ───────────────────────────────────────────────────────────────
 
 const NAV=[
@@ -4259,6 +4456,7 @@ const NAV=[
   {id:'pressure',label:'מצב לחץ',icon:'🚨'},
   {id:'tasks',label:'מאגר',icon:'📦'},
   {id:'weekly',label:'שבועי',icon:'📅'},
+  {id:'monthly',label:'חודשי',icon:'📆'},
   {id:'summary',label:'סיכום',icon:'📈'},
 ];
 
@@ -4716,6 +4914,7 @@ function App(){
             {screen==='tasks'&&<TaskRepositoryScreen tasks={tasks} setTasks={setTasks}/>}
             {screen==='summary'&&<WeeklySummaryScreen history={history} tasks={tasks} weeklyPlan={weeklyPlan} schedule={schedule}/>}
             {screen==='weekly'&&<WeeklyScheduleScreen key={weeklyKey} tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>}
+            {screen==='monthly'&&<MonthlyYearlyScreen tasks={tasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} setScreen={setScreen}/>}
           </div>
         </div>
       ):(
