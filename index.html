@@ -693,10 +693,16 @@ function taskDur(t){
 
 // ── SCHEDULE BUILDER ─────────────────────────────────────────────────
 
-function buildSchedule(tasks,wakeMin,mainTaskId,breakDur,dow){
+function buildSchedule(tasks,wakeMin,mainTaskId,breakDur,dow,isToday){
   const items=[];
-  // Always start at 08:00 regardless of current time
-  let cur=8*60;
+  // Today: start from current time (if after 6am), otherwise 08:00
+  let cur;
+  if(isToday){
+    const nowH=new Date().getHours(),nowM=new Date().getMinutes();
+    cur=(nowH>=6)?(nowH*60+nowM):8*60;
+  }else{
+    cur=8*60;
+  }
 
   function push(t,dur,label,isBreak,layerNote){
     items.push({
@@ -1238,7 +1244,8 @@ function DashboardScreen({tasks,setScreen,schedule}){
 
 // ── SCREEN 2: DAILY SCHEDULE ──────────────────────────────────────────
 
-function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,history,setHistory,setWeeklyPlan,parkedItems,setParkedItems,undoFlashTs}){
+function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,history,setHistory,setWeeklyPlan,parkedItems,setParkedItems,undoFlashTs,isToday:_isToday}){
+  const isToday=_isToday!==undefined?_isToday:true; // default to true for main schedule
   const [mode,setMode]=useState(schedule.length>0?'view':'build');
   const [step,setStep]=useState(2);
   function nowIsrael(){
@@ -1305,6 +1312,8 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,history,setHis
   // Google Calendar sync
   const [gcalSyncing,setGcalSyncing]=useState(false);
   const [gcalMsg,setGcalMsg]=useState('');
+  // Filter: show only user-added tasks (not fixed daily)
+  const [showOnlyMine,setShowOnlyMine]=useState(false);
   // Pinch-to-zoom for schedule grid
   const [zoomLevel,setZoomLevel]=useState(PX_DEFAULT);
   const pinchRef=useRef(null); // {startDist, startZoom}
@@ -1491,7 +1500,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,history,setHis
   const active=tasks.filter(t=>['A','B','C'].includes(t.rating));
 
   function doBuild(){
-    const s=buildSchedule(active,parseMin(wakeTime),mainId,breakDur,dow);
+    const s=buildSchedule(active,parseMin(wakeTime),mainId,breakDur,dow,isToday);
     setSchedule(s);
     setMode('view');
   }
@@ -1847,7 +1856,9 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,history,setHis
   }
 
   // VIEW MODE — Time Grid
-  const ds=liveSchedule||schedule;
+  const FIXED_DAILY_NAMES=['ארוחת בוקר','מיינדפולנס','פיזיותרפיה','תחזוקת קשרים','צ\'ק-אין','Brain dump','טיול עם פיונה','הפסקה','🌱'];
+  const dsAll=liveSchedule||schedule;
+  const ds=showOnlyMine?dsAll.filter(i=>!FIXED_DAILY_NAMES.some(n=>i.name.includes(n))&&!i.isBreak):dsAll;
   const nowMinG=new Date().getHours()*60+new Date().getMinutes();
   const focusItem=ds.find(i=>i.startTime<=nowMinG&&i.endTime>nowMinG);
   const dayStartRaw=ds.length?Math.floor((Math.min(...ds.map(i=>i.startTime))-30)/60)*60:420;
@@ -1967,6 +1978,21 @@ function DailyScheduleScreen({tasks,setTasks,schedule,setSchedule,history,setHis
             background:magnetMode?'rgba(99,102,241,.15)':'transparent',
             color:magnetMode?'var(--accent2)':'var(--text2)',cursor:'pointer',fontSize:11,fontWeight:600,fontFamily:'inherit'}}>
           🧲 מגנט {magnetMode?'✓':'✗'}
+        </button>
+        <button onClick={()=>setShowOnlyMine(m=>!m)}
+          style={{display:'flex',alignItems:'center',gap:4,padding:'4px 9px',borderRadius:7,
+            border:`1px solid ${showOnlyMine?'var(--orange)':'var(--border)'}`,
+            background:showOnlyMine?'rgba(249,115,22,.15)':'transparent',
+            color:showOnlyMine?'var(--orange)':'var(--text2)',cursor:'pointer',fontSize:11,fontWeight:600,fontFamily:'inherit'}}>
+          {showOnlyMine?'👤 שלי בלבד':'👁️ הכל'}
+        </button>
+        <button onClick={()=>{
+            if(!window.confirm('למחוק את כל המשימות שהוספת ידנית? (קבועות יישארו)'))return;
+            setSchedule(p=>p.filter(i=>FIXED_DAILY_NAMES.some(n=>i.name.includes(n))||i.isBreak));
+          }}
+          style={{padding:'4px 9px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',
+            border:'1px solid rgba(239,68,68,.35)',background:'rgba(239,68,68,.07)',color:'#EF4444'}}>
+          🗑️ נקה ידניות
         </button>
         <span style={{fontSize:10,color:'var(--text3)'}}>זמן נשימה:</span>
         {[0,5,10].map(b=>(
@@ -4281,7 +4307,7 @@ function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,s
           schedule={daySchedule} setSchedule={setDaySchedule}
           history={history} setHistory={setHistory} setWeeklyPlan={setWeeklyPlan}
           parkedItems={parkedItems} setParkedItems={setParkedItems}
-          undoFlashTs={undoFlashTs}/>
+          undoFlashTs={undoFlashTs} isToday={false}/>
       </div>
     );
   }
@@ -4592,7 +4618,7 @@ function MonthlyYearlyScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,se
           schedule={daySchedule} setSchedule={setDaySchedule}
           history={history} setHistory={setHistory} setWeeklyPlan={setWeeklyPlan}
           parkedItems={parkedItems} setParkedItems={setParkedItems}
-          undoFlashTs={undoFlashTs}/>
+          undoFlashTs={undoFlashTs} isToday={false}/>
       </div>
     );
   }
