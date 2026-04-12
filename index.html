@@ -4786,10 +4786,7 @@ function App(){
   const [isDarkMode,setIsDarkMode]=useState(true);
   const [autoTheme,setAutoTheme]=useState(true); // feature 11
   const [declutterMode,setDeclutterMode]=useState(false); // feature 12
-  const [showDailyCard,setShowDailyCard]=useState(()=>{
-    const last=localStorage.getItem('tavors_dailycard_date');
-    return last!==new Date().toISOString().split('T')[0];
-  }); // feature 13
+  const [showDailyCard,setShowDailyCard]=useState(false); // disabled
   const [globalSearch,setGlobalSearch]=useState(false); // feature 14
   const [searchQ,setSearchQ]=useState('');
   const [dualLayout,setDualLayout]=useState(false); // feature 16
