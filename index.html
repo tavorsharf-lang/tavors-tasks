@@ -1246,7 +1246,7 @@ function DashboardScreen({tasks,setScreen,schedule}){
 
 function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:propSetSchedule,history,setHistory,setWeeklyPlan,parkedItems,setParkedItems,undoFlashTs,isToday:_isToday,weeklyPlan:propWeeklyPlan}){
   const isToday=_isToday!==undefined?_isToday:true;
-  const [mode,setMode]=useState(schedule.length>0?'view':'build');
+  const [mode,setMode]=useState(propSchedule.length>0?'view':'build');
   const [step,setStep]=useState(2);
   function nowIsrael(){
     const now=new Date();
@@ -1272,8 +1272,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
   const [liveSchedule,setLiveSchedule]=useState(null);
   const gridDrag=useRef(null);
   const pendingRef=useRef(null);
-  const setScheduleRef=useRef(setSchedule);
-  useEffect(()=>{setScheduleRef.current=setSchedule;},[setSchedule]);
+  const setScheduleRef=useRef(propSetSchedule);
   // Side panel (split view)
   const [showSidePanel,setShowSidePanel]=useState(false);
   const [sidePanelTab,setSidePanelTab]=useState('tasks'); // 'tasks' or 'growth'
@@ -1532,6 +1531,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
   // Shadow schedule/setSchedule with day-aware versions
   const schedule=actualSchedule;
   const setSchedule=actualSetSchedule;
+  useEffect(()=>{setScheduleRef.current=setSchedule;},[setSchedule]);
 
   function doBuild(){
     const s=buildSchedule(active,parseMin(wakeTime),mainId,breakDur,dow,viewingToday);
@@ -2153,7 +2153,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
           }}
           onTouchEnd={e=>{if(e.touches.length<2)pinchRef.current=null;}}
           onDragOver={e=>{
-            if(!e.dataTransfer.types.includes('paneltaskid')&&!e.dataTransfer.types.includes('growthtaskid'))return;
+            if(!e.dataTransfer.types.includes('paneltaskid')&&!e.dataTransfer.types.includes('growthtaskid')&&!e.dataTransfer.types.includes('weeklyentryjson'))return;
             e.preventDefault();
             e.dataTransfer.dropEffect='copy';
             setExternalDragOver(true);
@@ -2173,6 +2173,21 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
             const rect=gridRef.current.getBoundingClientRect();
             const y=e.clientY-rect.top;
             const stm=Math.max(dayStart,Math.round((y/PX+dayStart)/15)*15);
+            // Check if it's a weekly entry dragged from weekly panel
+            const weeklyJson=e.dataTransfer.getData('weeklyEntryJson');
+            if(weeklyJson){
+              try{
+                const we=JSON.parse(weeklyJson);
+                const t=we.taskId?tasks.find(x=>x.id===we.taskId):null;
+                const dur=we.endTime&&we.startTime?(we.endTime-we.startTime):(t?taskDur(t):30);
+                setSchedule(p=>[...p,{id:uid(),taskId:we.taskId||null,name:we.name,
+                  startTime:stm,endTime:stm+dur,done:false,isBreak:false,isFixed:we.isFixed||false,
+                  isPinned:false,layerNote:null,task:t||null,note:we.note||''}]
+                  .sort((a,b)=>a.startTime-b.startTime));
+                playSound('drop');
+              }catch(err){}
+              return;
+            }
             // Check if it's a growth task
             const gid=e.dataTransfer.getData('growthTaskId');
             if(gid){
@@ -2294,6 +2309,15 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                   animation:cardAnim,
                   transition:draggingId&&!isShaking?'none':'top .18s ease, height .18s ease, opacity .2s',
                   zIndex:isDragging?25:isFocus?5:1,
+                }}
+                draggable
+                onDragStart={e=>{
+                  e.dataTransfer.setData('dailyEntryJson',JSON.stringify({
+                    name:item.name,taskId:item.taskId,
+                    startTime:item.startTime,endTime:item.endTime,
+                    note:item.note||'',isFixed:item.isFixed||false,
+                  }));
+                  e.dataTransfer.effectAllowed='copyMove';
                 }}
                 onMouseDown={e=>startGridDrag(e,item,'move')}
                 onTouchStart={e=>{
@@ -4444,9 +4468,24 @@ function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,s
           const isDropTarget=dragOverDay===dateKey;
           return(
             <div key={dateKey}
-              onDragOver={e=>{e.preventDefault();if(weekDrag.current&&dragOverDay!==dateKey)setDragOverDay(dateKey);}}
+              onDragOver={e=>{e.preventDefault();if(weekDrag.current&&dragOverDay!==dateKey)setDragOverDay(dateKey);
+                if(e.dataTransfer.types.includes('dailyentryjson'))setDragOverDay(dateKey);}}
               onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget))setDragOverDay(null);}}
-              onDrop={e=>{e.preventDefault();moveEntryToDay(dateKey);}}
+              onDrop={e=>{e.preventDefault();
+                // Accept daily entries dragged from daily schedule
+                const dailyJson=e.dataTransfer.getData('dailyEntryJson');
+                if(dailyJson){
+                  try{
+                    const de=JSON.parse(dailyJson);
+                    addEntry(dateKey,{taskId:de.taskId||null,name:de.name,
+                      time:de.startTime?fmtMin(de.startTime):'09:00',
+                      startTime:de.startTime,endTime:de.endTime,
+                      note:de.note||'',isFixed:de.isFixed||false});
+                  }catch(err){}
+                  setDragOverDay(null);
+                  return;
+                }
+                moveEntryToDay(dateKey);}}
               style={{
                 background:'var(--card)',
                 border:`1px solid ${isDropTarget?'var(--accent)':isToday?'var(--accent)':'var(--border)'}`,
@@ -4500,8 +4539,13 @@ function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,s
                       draggable
                       onDragStart={e=>{
                         weekDrag.current={entryId:entry.id,fromDateKey:dateKey};
-                        e.dataTransfer.effectAllowed='move';
-                        // ghost image: default browser ghost is fine
+                        e.dataTransfer.effectAllowed='copyMove';
+                        // Store entry data for cross-panel drag
+                        e.dataTransfer.setData('weeklyEntryJson',JSON.stringify({
+                          name:entry.name,taskId:entry.taskId,time:entry.time,
+                          startTime:entry.startTime,endTime:entry.endTime,
+                          note:entry.note||'',isFixed:entry.isFixed||false,
+                        }));
                       }}
                       onDragEnd={()=>{weekDrag.current=null;setDragOverDay(null);}}
                       style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 8px',
