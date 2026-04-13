@@ -5040,18 +5040,20 @@ function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,s
 
   return(
     <div className="fi">
-      {/* header + nav */}
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-        <button className="btn btn-ghost btn-sm" onClick={()=>setWeekOffset(w=>w-1)}>הקודם →</button>
-        <div style={{textAlign:'center'}}>
-          <div style={{fontSize:15,fontWeight:800}}>{weekLabel()}</div>
-          <div style={{fontSize:11,color:'var(--text3)'}}>{days[0].date} — {days[6].date}</div>
+      {/* header + nav — hidden when in monthly view */}
+      {calView==='week'&&(
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setWeekOffset(w=>w-1)}>הקודם →</button>
+          <div style={{textAlign:'center'}}>
+            <div style={{fontSize:15,fontWeight:800}}>{weekLabel()}</div>
+            <div style={{fontSize:11,color:'var(--text3)'}}>{days[0].date} — {days[6].date}</div>
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setWeekOffset(w=>w+1)}>← הבא</button>
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={()=>setWeekOffset(w=>w+1)}>← הבא</button>
-      </div>
+      )}
 
       <div style={{display:'flex',gap:6,marginBottom:10}}>
-        {weekOffset!==0&&(
+        {calView==='week'&&weekOffset!==0&&(
           <button className="btn btn-ghost btn-sm" style={{fontSize:11}} onClick={()=>setWeekOffset(0)}>חזור לשבוע הנוכחי</button>
         )}
         <button className="btn btn-ghost btn-sm"
