@@ -435,6 +435,20 @@ function startListeners(){
         const val=JSON.parse(payload.data);
         // Ignore our own writes
         if(payload.device===_deviceId)return;
+        // Protect: don't overwrite local data with smaller/empty remote data
+        try{
+          const local=JSON.parse(localStorage.getItem(key)||'null');
+          const localSize=Array.isArray(local)?local.length:local?Object.keys(local).length:0;
+          const remoteSize=Array.isArray(val)?val.length:val?Object.keys(val).length:0;
+          if(localSize>0&&remoteSize===0){
+            console.warn('🛡️ Blocked empty remote overwrite for:',key,'(local has',localSize,'items)');
+            return;
+          }
+          if(localSize>remoteSize+5){
+            console.warn('🛡️ Blocked smaller remote overwrite for:',key,'local:',localSize,'remote:',remoteSize);
+            return;
+          }
+        }catch(e){}
         // Update localStorage + React state
         localStorage.setItem(key,JSON.stringify(val));
         if(_syncCallbacks[key])_syncCallbacks[key](val);
@@ -5330,9 +5344,14 @@ function App(){
       const db=initFirebase();
       if(!db){setSyncStatus('init-failed');return;}
     }
-    // Push current data to Firebase FIRST (so the other device gets it)
+    // Push current data to Firebase ONLY if local has data (don't push empty)
     SYNC_KEYS.forEach(k=>{
-      try{const v=JSON.parse(localStorage.getItem(k));if(v)firebaseWrite(k,v);}catch{}
+      try{
+        const v=JSON.parse(localStorage.getItem(k));
+        const size=Array.isArray(v)?v.length:v?Object.keys(v).length:0;
+        if(size>0)firebaseWrite(k,v);
+        else console.log('🛡️ Skipped pushing empty',k,'to Firebase');
+      }catch{}
     });
     // Start listeners + reload to fully activate
     startListeners();
