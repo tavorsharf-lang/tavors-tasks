@@ -1387,6 +1387,8 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
   const [showOnlyMine,setShowOnlyMine]=useState(false);
   // Pressure mode overlay
   const [showPressure,setShowPressure]=useState(false);
+  // Collapsible menu
+  const [showMenu,setShowMenu]=useState(false);
   // Pinch-to-zoom for schedule grid
   const [zoomLevel,setZoomLevel]=useState(PX_DEFAULT);
   const pinchRef=useRef(null); // {startDist, startZoom}
@@ -1990,8 +1992,8 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
       {/* ═══ STICKY TOP BAR (does not scroll) ═══ */}
       <div style={{flexShrink:0,background:'var(--bg)',paddingBottom:4}}>
 
-      {/* ── Header ── */}
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+      {/* ── Header: day nav + menu toggle ── */}
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <button className="btn btn-ghost btn-sm" style={{padding:'4px 8px'}} onClick={()=>setDayOffset(d=>d-1)}>הקודם →</button>
           <div style={{textAlign:'center'}}>
@@ -2000,79 +2002,153 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
           </div>
           <button className="btn btn-ghost btn-sm" style={{padding:'4px 8px'}} onClick={()=>setDayOffset(d=>d+1)}>← הבא</button>
         </div>
-        <div style={{display:'flex',gap:5}}>
-          <button className="btn btn-ghost btn-sm" onClick={copySchedule}>{copyMsg||'📋 העתק'}</button>
-          <button className="btn btn-ghost btn-sm"
-            onClick={notifEnabled?disableNotif:enableNotif}
-            style={notifEnabled?{border:'1px solid var(--green)',color:'var(--green)',background:'rgba(34,197,94,.1)'}:{}}
-            title={notifEnabled?`התראות פעילות (${notifMin} דקות לפני)`:'הפעל התראות'}>
-            {notifEnabled?'🔔':'🔕'}
-          </button>
-          <button className="btn btn-ghost btn-sm"
-            disabled={gcalSyncing}
-            onClick={async()=>{
-              setGcalSyncing(true);setGcalMsg('');
-              try{
-                const count=await gcalSyncSchedule(schedule,tasks);
-                setGcalMsg(`✅ סונכרן! ${count} אירועים נשלחו ליומן`);
-                setTimeout(()=>setGcalMsg(''),5000);
-                if(navigator.vibrate)navigator.vibrate([100,50,100]);
-              }catch(e){
-                console.error('GCal:',e);
-                _gcalToken=null;
-                setGcalMsg('❌ שגיאה — נסה שוב');
-                setTimeout(()=>setGcalMsg(''),5000);
-              }
-              setGcalSyncing(false);
-            }}
-            style={gcalMsg.startsWith('✅')?{border:'1px solid var(--green)',color:'var(--green)',background:'rgba(34,197,94,.15)'}:
-                   gcalMsg.startsWith('❌')?{border:'1px solid var(--red)',color:'var(--red)',background:'rgba(239,68,68,.1)'}:{}}
-            title="סנכרן ל-Google Calendar (מוחק ישנים + יוצר חדשים)">
-            {gcalSyncing?'⏳ מסנכרן...':gcalMsg||'📆 שלח'}
-          </button>
-          <button className="btn btn-ghost btn-sm"
-            onClick={async()=>{
-              setGcalSyncing(true);setGcalMsg('');
-              try{
-                const token=await gcalAuth();
-                const imported=await gcalImportEvents(token,schedule);
-                if(imported.length){
-                  setSchedule(p=>[...p,...imported].sort((a,b)=>a.startTime-b.startTime));
-                  setGcalMsg(`📥 +${imported.length}`);
-                }else{
-                  setGcalMsg('📥 אין חדשים');
-                }
-                setTimeout(()=>setGcalMsg(''),3000);
-              }catch(e){console.error('GCal:',e);_gcalToken=null;setGcalMsg('שגיאה — נסה שוב');setTimeout(()=>setGcalMsg(''),4000);}
-              setGcalSyncing(false);
-            }}
-            title="ייבא אירועים מ-Google Calendar לתוך הלוז">
-            📥 ייבא
-          </button>
-          <button className="btn btn-ghost btn-sm" style={{position:'relative'}} onClick={()=>setShowTemplates(t=>!t)}>
-            📐 תבנית
-          </button>
-          <button className="btn btn-ghost btn-sm" onClick={()=>{
-            // Add fixed daily rituals WITHOUT removing existing tasks
-            const existing=schedule;
-            const rituals=buildSchedule(active,8*60,null,15,dow,viewingToday);
-            // Only add rituals that don't already exist
-            const toAdd=rituals.filter(r=>!existing.some(e=>e.name===r.name));
-            if(toAdd.length===0){alert('כל הריטואלים כבר בלוז');return;}
-            setSchedule(p=>[...p,...toAdd].sort((a,b)=>a.startTime-b.startTime));
-          }}>🔁 הוסף ריטואלים</button>
-          <button className="btn btn-ghost btn-sm"
-            style={{border:'1px solid rgba(239,68,68,.4)',color:'#DC2626',background:'rgba(239,68,68,.06)'}}
-            onClick={()=>setShowPressure(true)}>
-            🚨 מצב לחץ
-          </button>
-        </div>
+        <button onClick={()=>setShowMenu(m=>!m)}
+          style={{background:showMenu?'var(--accent)':'transparent',border:'1px solid var(--border)',borderRadius:8,
+            padding:'6px 10px',cursor:'pointer',fontSize:16,lineHeight:1,color:showMenu?'#fff':'var(--text)',transition:'.2s'}}>
+          ☰
+        </button>
       </div>
+
+      {/* ── Collapsible Menu ── */}
+      {showMenu&&(
+        <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:10,padding:'10px',marginBottom:6,
+          boxShadow:'0 4px 16px rgba(0,0,0,.08)'}}>
+
+          {/* Row 1: Actions */}
+          <div style={{display:'flex',gap:5,marginBottom:8,flexWrap:'wrap'}}>
+            <button className="btn btn-ghost btn-sm" onClick={()=>{copySchedule();setShowMenu(false);}}>{copyMsg||'📋 העתק'}</button>
+            <button className="btn btn-ghost btn-sm"
+              onClick={notifEnabled?disableNotif:enableNotif}
+              style={notifEnabled?{border:'1px solid var(--green)',color:'var(--green)',background:'rgba(34,197,94,.1)'}:{}}>
+              {notifEnabled?'🔔':'🔕'}
+            </button>
+            <button className="btn btn-ghost btn-sm" disabled={gcalSyncing}
+              onClick={async()=>{
+                setGcalSyncing(true);setGcalMsg('');
+                try{
+                  const count=await gcalSyncSchedule(schedule,tasks);
+                  setGcalMsg(`✅ ${count} אירועים`);setTimeout(()=>setGcalMsg(''),4000);
+                  if(navigator.vibrate)navigator.vibrate([100,50,100]);
+                }catch(e){console.error('GCal:',e);_gcalToken=null;setGcalMsg('❌ שגיאה');setTimeout(()=>setGcalMsg(''),4000);}
+                setGcalSyncing(false);
+              }}
+              style={gcalMsg.startsWith('✅')?{border:'1px solid var(--green)',color:'var(--green)',background:'rgba(34,197,94,.1)'}:{}}>
+              {gcalSyncing?'⏳':gcalMsg||'📆 שלח'}
+            </button>
+            <button className="btn btn-ghost btn-sm"
+              onClick={async()=>{
+                setGcalSyncing(true);setGcalMsg('');
+                try{
+                  const token=await gcalAuth();
+                  const imported=await gcalImportEvents(token,schedule);
+                  if(imported.length){setSchedule(p=>[...p,...imported].sort((a,b)=>a.startTime-b.startTime));setGcalMsg(`📥 +${imported.length}`);}
+                  else{setGcalMsg('📥 אין חדשים');}
+                  setTimeout(()=>setGcalMsg(''),3000);
+                }catch(e){console.error('GCal:',e);_gcalToken=null;setGcalMsg('שגיאה');setTimeout(()=>setGcalMsg(''),4000);}
+                setGcalSyncing(false);
+              }}>
+              📥 ייבא
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={()=>setShowTemplates(t=>!t)}>📐 תבנית</button>
+            <button className="btn btn-ghost btn-sm" onClick={()=>{
+              const rituals=buildSchedule(active,8*60,null,15,dow,viewingToday);
+              const toAdd=rituals.filter(r=>!schedule.some(e=>e.name===r.name));
+              if(!toAdd.length){alert('כל הריטואלים כבר בלוז');return;}
+              setSchedule(p=>[...p,...toAdd].sort((a,b)=>a.startTime-b.startTime));
+            }}>🔁 ריטואלים</button>
+            <button className="btn btn-ghost btn-sm"
+              style={{border:'1px solid rgba(239,68,68,.4)',color:'#DC2626',background:'rgba(239,68,68,.06)'}}
+              onClick={()=>{setShowPressure(true);setShowMenu(false);}}>
+              🚨 לחץ
+            </button>
+          </div>
+
+          {/* Row 2: Controls */}
+          <div style={{display:'flex',gap:5,marginBottom:8,flexWrap:'wrap',alignItems:'center'}}>
+            <div style={{display:'flex',alignItems:'center',gap:2,border:'1px solid var(--border)',borderRadius:7,padding:'2px 4px'}}>
+              <button onClick={()=>setZoomLevel(z=>Math.max(1.2,Math.round((z-0.3)*10)/10))}
+                style={{background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize:13,fontFamily:'inherit',padding:'2px 5px',fontWeight:700}}>−</button>
+              <span style={{fontSize:10,color:'var(--text3)',minWidth:28,textAlign:'center'}}>{zoomLevel}x</span>
+              <button onClick={()=>setZoomLevel(z=>Math.min(6,Math.round((z+0.3)*10)/10))}
+                style={{background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize:13,fontFamily:'inherit',padding:'2px 5px',fontWeight:700}}>+</button>
+            </div>
+            <button onClick={()=>setMagnetMode(m=>!m)}
+              style={{display:'flex',alignItems:'center',gap:4,padding:'4px 9px',borderRadius:7,
+                border:`1px solid ${magnetMode?'var(--accent)':'var(--border)'}`,
+                background:magnetMode?'rgba(99,102,241,.15)':'transparent',
+                color:magnetMode?'var(--accent2)':'var(--text2)',cursor:'pointer',fontSize:11,fontWeight:600,fontFamily:'inherit'}}>
+              🧲 {magnetMode?'✓':'✗'}
+            </button>
+            <button onClick={()=>setShowOnlyMine(m=>!m)}
+              style={{padding:'4px 9px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',
+                border:`1px solid ${showOnlyMine?'var(--orange)':'var(--border)'}`,
+                background:showOnlyMine?'rgba(249,115,22,.15)':'transparent',
+                color:showOnlyMine?'var(--orange)':'var(--text2)'}}>
+              {showOnlyMine?'👤 שלי':'👁️ הכל'}
+            </button>
+            <button onClick={()=>{if(window.confirm('למחוק ידניות?'))setSchedule(p=>p.filter(i=>isFixedDaily(i.name)||i.isBreak));}}
+              style={{padding:'4px 9px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',
+                border:'1px solid rgba(239,68,68,.35)',background:'rgba(239,68,68,.07)',color:'#EF4444'}}>
+              🗑️ נקה
+            </button>
+            <span style={{fontSize:10,color:'var(--text3)'}}>נשימה:</span>
+            {[0,5,10].map(b=>(
+              <button key={b} onClick={()=>setBufferMin(b)}
+                style={{padding:'3px 7px',borderRadius:6,fontSize:11,
+                  border:`1px solid ${bufferMin===b?'var(--accent)':'var(--border)'}`,
+                  background:bufferMin===b?'rgba(99,102,241,.15)':'transparent',
+                  color:bufferMin===b?'var(--accent2)':'var(--text3)',cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>
+                {b===0?'0':b+'′'}
+              </button>
+            ))}
+            <button onClick={()=>setXrayMode(m=>!m)}
+              style={{padding:'4px 9px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',
+                border:`1px solid ${xrayMode?'#2563EB':'var(--border)'}`,
+                background:xrayMode?'rgba(37,99,235,.15)':'transparent'}}>
+              <span style={{color:'#2563EB'}}>התפתחות</span>/<span style={{color:'#16A34A'}}>פנאי</span>
+            </button>
+            <button onClick={()=>setShowSidePanel(m=>!m)}
+              style={{padding:'4px 9px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',
+                border:`1px solid ${showSidePanel?'var(--green)':'var(--border)'}`,
+                background:showSidePanel?'rgba(34,197,94,.15)':'transparent',
+                color:showSidePanel?'var(--green)':'var(--text3)'}}>
+              📦 {showSidePanel?'סגור':'מאגר'}
+            </button>
+            {[15,30].map(delay=>(
+              <button key={delay} onClick={()=>setSchedule(prev=>prev.map(it=>(!it.isPinned&&it.startTime>nowMinG)?{...it,startTime:it.startTime+delay,endTime:it.endTime+delay}:it))}
+                style={{padding:'4px 9px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',
+                  border:'1px solid rgba(239,68,68,.35)',background:'rgba(239,68,68,.07)',color:'#EF4444'}}>
+                ⏩ {delay}′
+              </button>
+            ))}
+          </div>
+
+          {/* Quick add */}
+          <div style={{display:'flex',gap:6}}>
+            <input value={quickAdd} onChange={e=>setQuickAdd(e.target.value)}
+              onKeyDown={e=>{
+                if(e.key!=='Enter'||!quickAdd.trim())return;
+                const tm=quickAdd.match(/(\d{1,2}):(\d{2})/);
+                const stm=tm?parseInt(tm[1])*60+parseInt(tm[2]):(ds.length?ds[ds.length-1].endTime:9*60);
+                let dur=30;
+                if(quickAdd.includes('שעה וחצי'))dur=90;
+                else if(quickAdd.includes('שעתיים'))dur=120;
+                else if(quickAdd.includes('שעה'))dur=60;
+                else{const dm=quickAdd.match(/(\d+)\s*דקות?/);if(dm)dur=parseInt(dm[1]);}
+                const nm=quickAdd.replace(/\d{1,2}:\d{2}/,'').replace(/\d+\s*דקות?/g,'').replace(/שעה[^ ]*/g,'').replace(/שעתיים/g,'').trim()||quickAdd;
+                setSchedule(p=>[...p,{id:uid(),taskId:null,name:nm,startTime:stm,endTime:stm+dur,done:false,isBreak:false,isFixed:false,layerNote:null,task:null,note:''}].sort((a,b)=>a.startTime-b.startTime));
+                setQuickAdd('');
+              }}
+              placeholder="⚡ הוסף מהיר: '10:00 שעה ריאיון' ← Enter"
+              style={{fontSize:12,padding:'6px 10px'}}/>
+          </div>
+        </div>
+      )}
 
       {/* ── Template Picker ── */}
       {showTemplates&&(
         <div style={{marginBottom:10,padding:'12px 14px',background:'var(--card)',border:'1px solid var(--accent)',borderRadius:12,
-          boxShadow:'0 8px 32px rgba(0,0,0,.4)'}}>
+          boxShadow:'0 4px 16px rgba(0,0,0,.08)'}}>
           <div style={{fontSize:13,fontWeight:800,marginBottom:10,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <span>📐 בנה לוז מתבנית</span>
             <button onClick={()=>setShowTemplates(false)} style={{background:'none',border:'none',color:'var(--text3)',cursor:'pointer',fontSize:14}}>✕</button>
@@ -2096,94 +2172,6 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
           </div>
         </div>
       )}
-
-      {/* ── Controls ── */}
-      <div data-declutter-hide style={{display:'flex',gap:5,marginBottom:8,flexWrap:'wrap',alignItems:'center'}}>
-        <div style={{display:'flex',alignItems:'center',gap:2,border:'1px solid var(--border)',borderRadius:7,padding:'2px 4px'}}>
-          <button onClick={()=>setZoomLevel(z=>Math.max(1.2,Math.round((z-0.3)*10)/10))}
-            style={{background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize:13,fontFamily:'inherit',padding:'2px 5px',fontWeight:700}}>−</button>
-          <span style={{fontSize:10,color:'var(--text3)',minWidth:28,textAlign:'center'}}>{zoomLevel}x</span>
-          <button onClick={()=>setZoomLevel(z=>Math.min(6,Math.round((z+0.3)*10)/10))}
-            style={{background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize:13,fontFamily:'inherit',padding:'2px 5px',fontWeight:700}}>+</button>
-        </div>
-        <button onClick={()=>setMagnetMode(m=>!m)}
-          style={{display:'flex',alignItems:'center',gap:4,padding:'4px 9px',borderRadius:7,
-            border:`1px solid ${magnetMode?'var(--accent)':'var(--border)'}`,
-            background:magnetMode?'rgba(99,102,241,.15)':'transparent',
-            color:magnetMode?'var(--accent2)':'var(--text2)',cursor:'pointer',fontSize:11,fontWeight:600,fontFamily:'inherit'}}>
-          🧲 מגנט {magnetMode?'✓':'✗'}
-        </button>
-        <button onClick={()=>setShowOnlyMine(m=>!m)}
-          style={{display:'flex',alignItems:'center',gap:4,padding:'4px 9px',borderRadius:7,
-            border:`1px solid ${showOnlyMine?'var(--orange)':'var(--border)'}`,
-            background:showOnlyMine?'rgba(249,115,22,.15)':'transparent',
-            color:showOnlyMine?'var(--orange)':'var(--text2)',cursor:'pointer',fontSize:11,fontWeight:600,fontFamily:'inherit'}}>
-          {showOnlyMine?'👤 שלי בלבד':'👁️ הכל'}
-        </button>
-        <button onClick={()=>{
-            if(!window.confirm('למחוק את כל המשימות שהוספת ידנית? (קבועות יישארו)'))return;
-            setSchedule(p=>p.filter(i=>isFixedDaily(i.name)||i.isBreak));
-          }}
-          style={{padding:'4px 9px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',
-            border:'1px solid rgba(239,68,68,.35)',background:'rgba(239,68,68,.07)',color:'#EF4444'}}>
-          🗑️ נקה ידניות
-        </button>
-        <span style={{fontSize:10,color:'var(--text3)'}}>זמן נשימה:</span>
-        {[0,5,10].map(b=>(
-          <button key={b} onClick={()=>setBufferMin(b)}
-            style={{padding:'3px 7px',borderRadius:6,fontSize:11,
-              border:`1px solid ${bufferMin===b?'var(--accent)':'var(--border)'}`,
-              background:bufferMin===b?'rgba(99,102,241,.15)':'transparent',
-              color:bufferMin===b?'var(--accent2)':'var(--text3)',cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>
-            {b===0?'ללא':b+'′'}
-          </button>
-        ))}
-        <button onClick={()=>setXrayMode(m=>!m)}
-          style={{padding:'4px 9px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',
-            border:`1px solid ${xrayMode?'#2563EB':'var(--border)'}`,
-            background:xrayMode?'rgba(37,99,235,.15)':'transparent',
-            color:xrayMode?'#2563EB':'var(--text3)'}}>
-          <span style={{color:'#2563EB'}}>התפתחות</span>/<span style={{color:'#16A34A'}}>פנאי</span>
-        </button>
-        <button onClick={()=>setShowSidePanel(m=>!m)}
-          title="פתח מאגר משימות לצד הלוז — גרור משימה ישירות לשעה"
-          style={{padding:'4px 9px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',
-            border:`1px solid ${showSidePanel?'var(--green)':'var(--border)'}`,
-            background:showSidePanel?'rgba(34,197,94,.15)':'transparent',
-            color:showSidePanel?'var(--green)':'var(--text3)'}}>
-          📦 {showSidePanel?'סגור מאגר':'פתח מאגר'}
-        </button>
-        {[15,30].map(delay=>(
-          <button key={delay}
-            onClick={()=>{
-              setSchedule(prev=>prev.map(it=>(!it.isPinned&&it.startTime>nowMinG)?{...it,startTime:it.startTime+delay,endTime:it.endTime+delay}:it));
-            }}
-            style={{padding:'4px 9px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',
-              border:'1px solid rgba(239,68,68,.35)',background:'rgba(239,68,68,.07)',color:'#EF4444'}}>
-            ⏩ {delay}′
-          </button>
-        ))}
-      </div>
-
-      {/* ── Quick add ── */}
-      <div data-declutter-hide style={{display:'flex',gap:6,marginBottom:8}}>
-        <input value={quickAdd} onChange={e=>setQuickAdd(e.target.value)}
-          onKeyDown={e=>{
-            if(e.key!=='Enter'||!quickAdd.trim())return;
-            const tm=quickAdd.match(/(\d{1,2}):(\d{2})/);
-            const stm=tm?parseInt(tm[1])*60+parseInt(tm[2]):(ds.length?ds[ds.length-1].endTime:9*60);
-            let dur=30;
-            if(quickAdd.includes('שעה וחצי'))dur=90;
-            else if(quickAdd.includes('שעתיים'))dur=120;
-            else if(quickAdd.includes('שעה'))dur=60;
-            else{const dm=quickAdd.match(/(\d+)\s*דקות?/);if(dm)dur=parseInt(dm[1]);}
-            const nm=quickAdd.replace(/\d{1,2}:\d{2}/,'').replace(/\d+\s*דקות?/g,'').replace(/שעה[^ ]*/g,'').replace(/שעתיים/g,'').trim()||quickAdd;
-            setSchedule(p=>[...p,{id:uid(),taskId:null,name:nm,startTime:stm,endTime:stm+dur,done:false,isBreak:false,isFixed:false,layerNote:null,task:null,note:''}].sort((a,b)=>a.startTime-b.startTime));
-            setQuickAdd('');
-          }}
-          placeholder="⚡ הוסף מהיר: '10:00 שעה ריאיון' ← Enter"
-          style={{fontSize:12,padding:'6px 10px'}}/>
-      </div>
 
       </div>{/* ═══ END STICKY TOP BAR ═══ */}
 
