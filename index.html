@@ -411,11 +411,22 @@ function initFirebase(){
 
 function firebaseWrite(key,value){
   if(!_firebaseDB||!_syncRoom)return;
-  const payload={data:JSON.stringify(value),ts:Date.now(),device:_deviceId};
-  _lastWriteTs[key]=payload.ts;
+  const now=Date.now();
+  const payload={data:JSON.stringify(value),ts:now,device:_deviceId};
+  _lastWriteTs[key]=now;
   _firebaseDB.ref(`rooms/${_syncRoom}/${key}`).set(payload)
     .then(()=>console.log('🔥 Written to Firebase:',key,'at',new Date().toLocaleTimeString()))
     .catch(e=>console.warn('write err:',e));
+  // Auto-backup: save snapshot every 10 minutes max
+  const backupKey=`_backup_${key}`;
+  const lastBackup=parseInt(localStorage.getItem(backupKey)||'0');
+  if(now-lastBackup>600000){ // 10 min
+    const dateStr=new Date().toISOString().split('T')[0];
+    const hourStr=String(new Date().getHours()).padStart(2,'0');
+    _firebaseDB.ref(`backups/${_syncRoom}/${dateStr}/${hourStr}/${key}`).set(payload)
+      .then(()=>{localStorage.setItem(backupKey,String(now));console.log('💾 Backup saved:',key,dateStr,hourStr+':00');})
+      .catch(()=>{});
+  }
 }
 
 // Unique device ID to distinguish own writes
@@ -5617,8 +5628,56 @@ function App(){
               </div>
             </div>
 
+            {/* Option C: Restore from backup */}
+            <div className="card" style={{marginBottom:12}}>
+              <div style={{fontSize:14,fontWeight:800,marginBottom:8}}>🔙 שחזור מגיבוי</div>
+              <div style={{fontSize:11,color:'var(--text2)',marginBottom:12,lineHeight:1.6}}>
+                המערכת שומרת גיבוי אוטומטי כל 10 דקות. אם משהו נמחק — אפשר לשחזר.
+              </div>
+              <button className="btn btn-ghost btn-sm" style={{width:'100%'}}
+                onClick={async()=>{
+                  if(!_firebaseDB||!_syncRoom){alert('צריך חיבור Firebase');return;}
+                  try{
+                    const snap=await _firebaseDB.ref(`backups/${_syncRoom}`).orderByKey().limitToLast(7).once('value');
+                    const data=snap.val();
+                    if(!data){alert('אין גיבויים');return;}
+                    const dates=Object.keys(data).sort().reverse();
+                    const options=[];
+                    dates.forEach(date=>{
+                      Object.keys(data[date]).sort().reverse().forEach(hour=>{
+                        const keys=Object.keys(data[date][hour]);
+                        options.push(`${date} ${hour}:00 (${keys.length} סוגים)`);
+                      });
+                    });
+                    const choice=prompt('בחר גיבוי לשחזור:\\n'+options.map((o,i)=>`${i+1}. ${o}`).join('\\n')+'\\n\\nהקלד מספר:');
+                    if(!choice)return;
+                    const idx=parseInt(choice)-1;
+                    if(isNaN(idx)||idx<0||idx>=options.length){alert('בחירה לא תקינה');return;}
+                    // Find the chosen backup
+                    let ci=0;
+                    for(const date of dates){
+                      for(const hour of Object.keys(data[date]).sort().reverse()){
+                        if(ci===idx){
+                          const backup=data[date][hour];
+                          _syncReady=false;
+                          Object.entries(backup).forEach(([key,val])=>{
+                            localStorage.setItem(key,val.data);
+                          });
+                          alert('✅ שוחזר מ-'+date+' '+hour+':00\\nהדף יתרענן עכשיו');
+                          location.reload();
+                          return;
+                        }
+                        ci++;
+                      }
+                    }
+                  }catch(e){alert('שגיאה: '+e.message);}
+                }}>
+                🔙 שחזר מגיבוי
+              </button>
+            </div>
+
             <div style={{fontSize:10,color:'var(--text3)',textAlign:'center',lineHeight:1.6}}>
-              💡 ללא Firebase — השתמש בייצוא/ייבוא. עם Firebase — הכל מסתנכרן אוטומטית.
+              💡 גיבוי אוטומטי כל 10 דקות · ייצוא/ייבוא ידני · סנכרון Firebase
             </div>
           </div>
         </div>
