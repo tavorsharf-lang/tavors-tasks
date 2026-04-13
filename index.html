@@ -3485,10 +3485,13 @@ function AddToScheduleModal({tasks,setSchedule,setTasks,onClose}){
   const setF=(k,v)=>setForm(f=>({...f,[k]:v}));
   const [saveToRepo,setSaveToRepo]=useState(true);
 
-  // Time trio sync
-  function setSt(v){_setSt(v);_setEt(fmtMin(parseMin(v)+dur));}
-  function setEtVal(v){_setEt(v);const d=Math.max(5,parseMin(v)-parseMin(st));_setDur(d);}
-  function setDurVal(v){_setDur(Number(v));_setEt(fmtMin(parseMin(st)+Number(v)));}
+  // Time trio sync — use refs to avoid stale closure issues
+  const stRef=useRef(st),durRef=useRef(dur);
+  useEffect(()=>{stRef.current=st;},[st]);
+  useEffect(()=>{durRef.current=dur;},[dur]);
+  function setSt(v){_setSt(v);stRef.current=v;_setEt(fmtMin(parseMin(v)+durRef.current));}
+  function setEtVal(v){_setEt(v);const d=Math.max(5,parseMin(v)-parseMin(stRef.current));_setDur(d);durRef.current=d;}
+  function setDurVal(v){const n=Number(v);_setDur(n);durRef.current=n;_setEt(fmtMin(parseMin(stRef.current)+n));}
 
   function pickTask(id){
     setSel(id);
