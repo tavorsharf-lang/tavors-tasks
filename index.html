@@ -663,7 +663,13 @@ function isFixedDaily(name){return FIXED_DAILY_NAMES.some(n=>name.includes(n));}
 const DAYS=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
 const MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 
-let _uid=Date.now();
+let _uid=(()=>{
+  try{
+    const tasks=JSON.parse(localStorage.getItem('tavors_tasks')||'[]');
+    const maxId=Math.max(0,...tasks.map(t=>typeof t.id==='number'?t.id:0));
+    return Math.max(maxId,30); // at least 30 (after initial tasks)
+  }catch(e){return 30;}
+})();
 function uid(){return ++_uid;}
 
 function daysLeft(dl){
