@@ -2502,30 +2502,6 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                         )}
                       </div>
                     )}
-                    {/* Dependency button */}
-                    {!item.isBreak&&!isShort&&(
-                      <div style={{position:'relative'}} onMouseDown={e=>e.stopPropagation()}>
-                        <button className="action-btn"
-                          style={{fontSize:10,padding:'1px 4px',opacity:.7,color:item.dependsOn?'var(--orange)':'var(--text3)'}}
-                          title={item.dependsOn?'הסר תלות':'הגדר תלות'}
-                          onClick={e=>{
-                            e.stopPropagation();
-                            if(item.dependsOn){removeDependency(item.id);}
-                            else{setShowDepPicker(showDepPicker===item.id?null:item.id);}
-                          }}>🔗</button>
-                        {showDepPicker===item.id&&(
-                          <div className="postpone-menu" style={{minWidth:170,maxHeight:200,overflowY:'auto'}}>
-                            <div style={{fontSize:10,color:'var(--text3)',padding:'4px 8px',fontWeight:700}}>תלוי ב:</div>
-                            {schedule.filter(i=>i.id!==item.id&&!i.isBreak).map(dep=>(
-                              <button key={dep.id} className="postpone-opt" style={{fontSize:11}}
-                                onClick={()=>addDependency(item.id,dep.id)}>
-                                {fmtMin(dep.startTime)} {dep.name.slice(0,25)}{dep.name.length>25?'…':''}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
                     <button className="action-btn" style={{fontSize:14,padding:'3px 5px',opacity:1}}
                       onClick={e=>{e.stopPropagation();removeItem(item.id);}}>🗑️</button>
                   </div>
