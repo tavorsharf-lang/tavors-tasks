@@ -1396,6 +1396,9 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
   const [showPressure,setShowPressure]=useState(false);
   // Collapsible menu
   const [showMenu,setShowMenu]=useState(true);
+  // Multi-select drag
+  const [selectedIds,setSelectedIds]=useState(new Set());
+  const multiDragRef=useRef(null); // {startY, origPositions:{id:{startTime,endTime}}}
   // Pinch-to-zoom for schedule grid
   const [zoomLevel,setZoomLevel]=useState(PX_DEFAULT);
   const pinchRef=useRef(null); // {startDist, startZoom}
@@ -1461,6 +1464,21 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
 
   useEffect(()=>{
     function onMove(e){
+      // Multi-drag mode
+      if(multiDragRef.current){
+        if(e.touches)e.preventDefault();
+        const clientY=e.touches?e.touches[0].clientY:e.clientY;
+        const dy=clientY-multiDragRef.current.startY;
+        const dmin=Math.round(dy/PX/15)*15;
+        const updated=schedule.map(it=>{
+          const orig=multiDragRef.current.origPositions[it.id];
+          if(!orig)return it;
+          return{...it,startTime:Math.max(0,orig.startTime+dmin),endTime:Math.max(15,orig.endTime+dmin)};
+        });
+        pendingRef.current=updated;
+        setLiveSchedule(updated);
+        return;
+      }
       if(!gridDrag.current)return;
       if(e.touches)e.preventDefault(); // prevent scroll while dragging on mobile
       const{type,id,startY,origStart,origDur,origSchedule}=gridDrag.current;
@@ -1497,6 +1515,17 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
       }
     }
     function onUp(){
+      // Multi-drag end
+      if(multiDragRef.current){
+        multiDragRef.current=null;
+        setDraggingId(null);
+        const final=pendingRef.current||schedule;
+        setScheduleRef.current(final);
+        setLiveSchedule(null);
+        pendingRef.current=null;
+        playSound('drop');
+        return;
+      }
       if(!gridDrag.current)return;
       const{snapMagnet,snapBuffer,type,id:draggedId}=gridDrag.current; // capture id before null
       const wasPinned=dragOverPinnedRef.current; // use ref, not stale closure state
@@ -2406,6 +2435,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
             const holoBorder=isDragging?(dragOverPinned?'1px solid rgba(239,68,68,.5)':dragOverGreen?'1px solid rgba(34,197,94,.5)':'1px solid var(--accent)'):(item.isPinned?`2px solid #EAB308`:`1px solid ${xrayMode?catStyle.border:'var(--border)'}`);
             const holoShadow=isDragging?(dragOverPinned?'0 0 0 2px rgba(239,68,68,.5),0 8px 24px rgba(239,68,68,.3)':dragOverGreen?'0 0 0 2px rgba(34,197,94,.5),0 8px 24px rgba(34,197,94,.25)':'0 8px 32px rgba(31,38,135,.45)'):isFocus?'0 0 0 2px var(--accent),0 0 16px rgba(99,102,241,.5)':'none';
             // Focus mode: dim non-focused items
+            const isSelected=selectedIds.has(item.id);
             const itemOpacity=item.done?0.4:(focusItem&&!isFocus&&!isDragging)?0.22:1;
             // Undo flash animation
             const cardAnim=isShaking?'redShake .4s ease':isSnapPulsing?'snapPulse .28s ease':undoFlash?'undoFlash .65s ease':undefined;
@@ -2423,7 +2453,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                   borderRadius:6,overflow:'visible',
                   cursor:(item.isPinned&&!isDragging)?'default':isDragging?'grabbing':'grab',
                   opacity:itemOpacity,
-                  boxShadow:isShaking?'0 0 0 3px rgba(239,68,68,.7)':holoShadow,
+                  boxShadow:isShaking?'0 0 0 3px rgba(239,68,68,.7)':isSelected?'0 0 0 2px #D97706, 0 0 12px rgba(217,119,6,.3)':holoShadow,
                   animation:cardAnim,
                   transition:draggingId&&!isShaking?'none':'top .18s ease, height .18s ease, opacity .2s',
                   zIndex:isDragging?25:isFocus?5:1,
@@ -2437,21 +2467,47 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                   }));
                   e.dataTransfer.effectAllowed='copyMove';
                 }}
-                onMouseDown={e=>startGridDrag(e,item,'move')}
+                onMouseDown={e=>{
+                  // Ctrl/Cmd+click = toggle selection
+                  if(e.ctrlKey||e.metaKey){
+                    e.preventDefault();e.stopPropagation();
+                    setSelectedIds(prev=>{const n=new Set(prev);if(n.has(item.id))n.delete(item.id);else n.add(item.id);return n;});
+                    return;
+                  }
+                  // If this item is selected and we have multi-selection, start multi-drag
+                  if(selectedIds.has(item.id)&&selectedIds.size>1){
+                    e.preventDefault();e.stopPropagation();
+                    const clientY=e.clientY;
+                    const origPositions={};
+                    selectedIds.forEach(sid=>{const it=schedule.find(i=>i.id===sid);if(it)origPositions[sid]={startTime:it.startTime,endTime:it.endTime};});
+                    multiDragRef.current={startY:clientY,origPositions};
+                    setDraggingId(item.id);
+                    setLiveSchedule(schedule);
+                    pendingRef.current=schedule;
+                    return;
+                  }
+                  // Clear selection if clicking without Ctrl
+                  if(selectedIds.size>0)setSelectedIds(new Set());
+                  startGridDrag(e,item,'move');
+                }}
                 onTouchStart={e=>{
                   if(e.touches.length!==1)return;
                   const touch=e.touches[0];
                   longPressReady.current=false;
                   longPressTimer.current=setTimeout(()=>{
                     longPressReady.current=true;
-                    // Vibrate if available
                     if(navigator.vibrate)navigator.vibrate(30);
-                    startGridDrag({touches:[touch],preventDefault:()=>{},stopPropagation:()=>{}},item,'move');
+                    // If items selected, toggle this one
+                    if(selectedIds.size>0){
+                      setSelectedIds(prev=>{const n=new Set(prev);if(n.has(item.id))n.delete(item.id);else n.add(item.id);return n;});
+                      return;
+                    }
+                    // First long press = select this item
+                    setSelectedIds(new Set([item.id]));
                   },400);
                 }}
                 onTouchEnd={e=>{clearTimeout(longPressTimer.current);longPressReady.current=false;}}
                 onTouchMove={e=>{
-                  // If long press hasn't fired yet, cancel it (user is scrolling)
                   if(!longPressReady.current){clearTimeout(longPressTimer.current);}
                 }}>
 
@@ -2460,6 +2516,13 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                   <div style={{position:'absolute',inset:0,overflow:'hidden',pointerEvents:'none',borderRadius:6}}>
                     <div style={{position:'absolute',left:0,right:0,height:2,background:'var(--accent2)',opacity:0.4,animation:'scanLine 1.4s linear infinite'}}/>
                   </div>
+                )}
+
+                {/* Selected indicator */}
+                {isSelected&&(
+                  <div style={{position:'absolute',top:3,right:3,width:16,height:16,borderRadius:'50%',
+                    background:'#D97706',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',
+                    fontSize:9,fontWeight:900,zIndex:20}}>{selectedIds.size>1?selectedIds.size:'✓'}</div>
                 )}
 
                 {/* Pinned indicator strip */}
