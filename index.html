@@ -571,19 +571,63 @@ function tryAutoConnect(){
 if(document.readyState==='complete')tryAutoConnect();
 else window.addEventListener('load',tryAutoConnect);
 
+// ── DEDUP: clean up duplicate schedule/weekly items on load ─────────
+function dedup(key,data){
+  if(key==='tavors_schedule'&&Array.isArray(data)){
+    const seen=new Set();
+    const clean=data.filter(it=>{
+      const sig=it.name+'|'+it.startTime+'|'+it.endTime;
+      if(seen.has(sig))return false;
+      seen.add(sig);
+      return true;
+    });
+    if(clean.length<data.length){
+      console.log(`🧹 Dedup ${key}: ${data.length} → ${clean.length} (removed ${data.length-clean.length} duplicates)`);
+      try{localStorage.setItem(key,JSON.stringify(clean));}catch{}
+      return clean;
+    }
+  }
+  if(key==='tavors_weekly'&&data&&typeof data==='object'){
+    let changed=false;
+    const clean={...data};
+    for(const dk of Object.keys(clean)){
+      if(!Array.isArray(clean[dk]))continue;
+      const seen=new Set();
+      const filtered=clean[dk].filter(it=>{
+        const sig=(it.name||'')+'|'+(it.startTime||it.time||'')+'|'+(it.endTime||'');
+        if(seen.has(sig))return false;
+        seen.add(sig);
+        return true;
+      });
+      if(filtered.length<clean[dk].length){
+        console.log(`🧹 Dedup ${key}[${dk}]: ${clean[dk].length} → ${filtered.length}`);
+        clean[dk]=filtered;
+        changed=true;
+      }
+    }
+    if(changed){
+      try{localStorage.setItem(key,JSON.stringify(clean));}catch{}
+      return clean;
+    }
+  }
+  return data;
+}
+
 // ── PERSISTENCE HOOK (localStorage + Firebase) ──────────────────────
 function usePersist(key,init){
   const [val,setVal]=useState(()=>{
-    try{const s=localStorage.getItem(key);return s?JSON.parse(s):init;}
+    try{const s=localStorage.getItem(key);const parsed=s?JSON.parse(s):init;return dedup(key,parsed);}
     catch{return init;}
   });
 
-  // Register this hook's setter so Firebase listener can push updates
+  // Register this hook's setter so Firebase listener can push updates (debounced)
+  const syncDebounce=useRef(null);
   useEffect(()=>{
     _syncCallbacks[key]=(remoteVal)=>{
-      setVal(remoteVal);
+      clearTimeout(syncDebounce.current);
+      syncDebounce.current=setTimeout(()=>setVal(remoteVal),300);
     };
-    return()=>{delete _syncCallbacks[key];};
+    return()=>{delete _syncCallbacks[key];clearTimeout(syncDebounce.current);};
   },[key]);
 
   const setter=useCallback(v=>{
@@ -1276,7 +1320,7 @@ const MOTIVATION_QUOTES=[
 function DashboardScreen({tasks,setScreen,schedule}){
   const [now,setNow]=useState(()=>new Date());
   useEffect(()=>{
-    const t=setInterval(()=>setNow(new Date()),30000);
+    const t=setInterval(()=>setNow(new Date()),60000);
     return()=>clearInterval(t);
   },[]);
 
@@ -1548,7 +1592,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
       const viewH=el.clientHeight;
       el.scrollTop=Math.max(0,nowPx-viewH/2);
     });
-  });
+  },[]);
   const [dragOverPinned,setDragOverPinned]=useState(false);
   const dragOverPinnedRef=useRef(false); // ref version for use inside useEffect closure
   const [dragOverGreen,setDragOverGreen]=useState(false);
@@ -1891,29 +1935,31 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
     return dep&&!dep.done;
   }
 
-  // Auto-sync schedule → weeklyPlan (debounced)
+  // Auto-sync schedule → weeklyPlan (debounced, skip if unchanged)
   const autoSyncTimer=useRef(null);
+  const lastSyncSig=useRef('');
   useEffect(()=>{
     if(!viewingToday||!schedule.length)return;
     clearTimeout(autoSyncTimer.current);
     autoSyncTimer.current=setTimeout(()=>{
       const dk=todayKey();
-      setWeeklyPlan(p=>{
-        const synced=schedule
-          .filter(it=>!it.isBreak)
-          .map(it=>({
-            id:it.id,
-            taskId:it.taskId||null,
-            name:it.name,
-            time:fmtMin(it.startTime),
-            startTime:it.startTime,
-            endTime:it.endTime,
-            note:it.note||'',
-            done:it.done,
-          }));
-        return{...p,[dk]:synced};
-      });
-    },1500);
+      const synced=schedule
+        .filter(it=>!it.isBreak)
+        .map(it=>({
+          id:it.id,
+          taskId:it.taskId||null,
+          name:it.name,
+          time:fmtMin(it.startTime),
+          startTime:it.startTime,
+          endTime:it.endTime,
+          note:it.note||'',
+          done:it.done,
+        }));
+      const sig=synced.map(s=>s.id+'|'+s.startTime+'|'+s.endTime+'|'+s.done).join(';');
+      if(sig===lastSyncSig.current)return;
+      lastSyncSig.current=sig;
+      setWeeklyPlan(p=>({...p,[dk]:synced}));
+    },2000);
     return()=>clearTimeout(autoSyncTimer.current);
   },[schedule,viewingToday]);
 
@@ -2002,14 +2048,14 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
     localStorage.setItem('tavors_notif','off');
   }
 
-  // Check every 30s for upcoming tasks
+  // Check every 60s for upcoming tasks
   useEffect(()=>{
     if(!notifEnabled)return;
     const iv=setInterval(()=>{
       const now=new Date();
       const nowM=now.getHours()*60+now.getMinutes();
-      schedule.forEach(it=>{
-        if(it.done||it.isBreak)return;
+      for(const it of schedule){
+        if(it.done||it.isBreak)continue;
         const diff=it.startTime-nowM;
         if(diff>=0&&diff<=notifMin&&!notifFired.current.has(it.id)){
           notifFired.current.add(it.id);
@@ -2021,8 +2067,8 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
             });
           }catch(e){}
         }
-      });
-    },30000);
+      }
+    },60000);
     return()=>clearInterval(iv);
   },[notifEnabled,notifMin,schedule]);
 
@@ -5564,7 +5610,7 @@ function App(){
   function setParkedItems(v,label='עדכון חניון'){pushUndo(label);setParkedItemsRaw(v);}
 
   const [today,setToday]=useState(()=>new Date());
-  useEffect(()=>{const iv=setInterval(()=>setToday(new Date()),30000);return()=>clearInterval(iv);},[]);
+  useEffect(()=>{const iv=setInterval(()=>setToday(new Date()),60000);return()=>clearInterval(iv);},[]);
   const urgentCount=tasks.filter(t=>t.deadline&&t.deadline!=='weekly-thursday'&&daysLeft(t.deadline)<=3).length;
   const searchRef=useRef(null);
 
