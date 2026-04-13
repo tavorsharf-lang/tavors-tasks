@@ -640,7 +640,8 @@ function usePersist(key,init){
 
   const setter=useCallback(v=>{
     setVal(prev=>{
-      const next=typeof v==='function'?v(prev):v;
+      const raw=typeof v==='function'?v(prev):v;
+      const next=dedup(key,raw);
       try{localStorage.setItem(key,JSON.stringify(next));}catch{}
       // Push to Firebase
       if(_syncReady&&_syncRoom){
