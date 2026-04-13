@@ -3412,6 +3412,11 @@ function TaskRepositoryScreen({tasks,setTasks,history}){
       }
       let av=a[sk],bv=b[sk];
       if(sk==='daysLeft'){av=daysLeft(a.deadline)??9999;bv=daysLeft(b.deadline)??9999;}
+      if(sk==='lastDone'){
+        const ai=lastDoneInfo(history,a.id,a.name);
+        const bi=lastDoneInfo(history,b.id,b.name);
+        av=ai?ai.days:9999;bv=bi?bi.days:9999;
+      }
       if(typeof av==='string')return sd*av.localeCompare(bv,'he');
       return sd*((av||0)-(bv||0));
     });
@@ -3477,6 +3482,7 @@ function TaskRepositoryScreen({tasks,setTasks,history}){
               <Th k="damageType" ch="נזק"/>
               <Th k="deadline" ch="דדליין"/>
               <Th k="daysLeft" ch="ימים"/>
+              <Th k="lastDone" ch="ביצוע אחרון"/>
               {!compact&&<Th k="timeRequired" ch="זמן"/>}
               {!compact&&<th>גודל</th>}
               {!compact&&<th>אנרגיה</th>}
@@ -3491,7 +3497,7 @@ function TaskRepositoryScreen({tasks,setTasks,history}){
               return(
                 <tr key={t.id} onClick={()=>setEditT(t)}>
                   <td style={{color:'var(--text3)'}}>{t.id}</td>
-                  <td style={{fontWeight:600,minWidth:150}}>{t.name} <LastDoneBadge history={history} taskId={t.id} taskName={t.name}/></td>
+                  <td style={{fontWeight:600,minWidth:150}}>{t.name}</td>
                   <td><RBadge rating={t.rating}/></td>
                   <td style={{textAlign:'center'}}>{t.quadrant}</td>
                   {!compact&&<td style={{fontSize:12,whiteSpace:'nowrap'}}><span title={t.domain}>{domainEmoji(t.domain)}</span> <span style={{color:'var(--text2)'}}>{t.domain}</span></td>}
@@ -3501,6 +3507,13 @@ function TaskRepositoryScreen({tasks,setTasks,history}){
                     {t.deadline==='weekly-thursday'?'כל חמישי':t.deadline?fmtDate(t.deadline):'—'}
                   </td>
                   <td style={{fontWeight:700,color:d!==null?dlColor(d):'var(--text3)'}}>{d!==null?d:'—'}</td>
+                  <td style={{fontSize:12,whiteSpace:'nowrap'}}>{(()=>{
+                    const info=lastDoneInfo(history,t.id,t.name);
+                    if(!info)return<span style={{color:'var(--text3)'}}>לא בוצע</span>;
+                    const{days}=info;
+                    const color=days===0?'var(--green)':days<=2?'var(--accent2)':days<=7?'var(--orange)':'var(--red)';
+                    return<span style={{color,fontWeight:600}}>{days===0?'היום':days===1?'אתמול':`לפני ${days} ימים`}</span>;
+                  })()}</td>
                   {!compact&&<td style={{fontSize:12,color:'var(--text2)',whiteSpace:'nowrap'}}>{t.timeRequired}</td>}
                   {!compact&&<td style={{fontSize:12}}>{t.size}</td>}
                   {!compact&&<td style={{fontSize:12}}>{t.energyRequired}</td>}
