@@ -1791,40 +1791,33 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
     return dep&&!dep.done;
   }
 
-  const [saveMsg,setSaveMsg]=useState('');
-  function saveChanges(){
-    const dk=todayKey(); // use global function, avoid shadowing
-    // 1. sync done items → history
-    const newHistory=[];
-    schedule.forEach(it=>{
-      if(it.done&&it.taskId){
-        newHistory.push({taskId:it.taskId,name:it.name,date:dk,action:'done'});
-      }
-    });
-    if(newHistory.length) setHistory(p=>[...p,...newHistory]);
-
-    // 2. sync all schedule items → weekly plan for today
-    setWeeklyPlan(p=>{
-      const synced=schedule
-        .filter(it=>!it.isBreak)
-        .map(it=>({
-          id:it.id,
-          taskId:it.taskId||null,
-          name:it.name,
-          time:fmtMin(it.startTime),
-          startTime:it.startTime,
-          endTime:it.endTime,
-          note:it.note||'',
-          _fromDailySync:true,
-          done:it.done,
-        }));
-      const manual=(p[dk]||[]).filter(e=>!e._fromDailySync);
-      return{...p,[dk]:[...manual,...synced]};
-    });
-
-    setSaveMsg('נשמר! ✓');
-    setTimeout(()=>setSaveMsg(''),2500);
-  }
+  // Auto-sync schedule → weeklyPlan (debounced)
+  const autoSyncTimer=useRef(null);
+  useEffect(()=>{
+    if(!viewingToday||!schedule.length)return;
+    clearTimeout(autoSyncTimer.current);
+    autoSyncTimer.current=setTimeout(()=>{
+      const dk=todayKey();
+      setWeeklyPlan(p=>{
+        const synced=schedule
+          .filter(it=>!it.isBreak)
+          .map(it=>({
+            id:it.id,
+            taskId:it.taskId||null,
+            name:it.name,
+            time:fmtMin(it.startTime),
+            startTime:it.startTime,
+            endTime:it.endTime,
+            note:it.note||'',
+            _fromDailySync:true,
+            done:it.done,
+          }));
+        const manual=(p[dk]||[]).filter(e=>!e._fromDailySync);
+        return{...p,[dk]:[...manual,...synced]};
+      });
+    },1500);
+    return()=>clearTimeout(autoSyncTimer.current);
+  },[schedule,viewingToday]);
 
   function copySchedule(){
     const lines=[`📋 הלוז של תבור — ${dateStr}`,''];
@@ -2940,14 +2933,6 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
               ☕ {d===60?'שעה':d+'′'}
             </button>
           ))}
-          <button onClick={saveChanges}
-            style={{marginRight:'auto',padding:'6px 16px',borderRadius:8,border:'none',
-              background:saveMsg?'var(--green)':'linear-gradient(135deg,#22c55e,#16a34a)',
-              color:'#fff',fontFamily:'Heebo,sans-serif',fontSize:13,fontWeight:700,
-              cursor:'pointer',transition:'background .3s',
-              boxShadow:saveMsg?'none':'0 2px 8px rgba(34,197,94,.3)'}}>
-            {saveMsg||'💾 שמור'}
-          </button>
           {(()=>{
             const allDone=schedule.length>0&&schedule.every(i=>i.done);
             return <button onClick={()=>{
