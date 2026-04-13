@@ -726,6 +726,34 @@ function taskDur(t){
   return 30;
 }
 
+// ── RECURRING TASKS ──────────────────────────────────────────────────
+function getRecurringTasksForDay(tasks,date){
+  const dow=date.getDay(); // 0=Sun
+  const dayMap={sun:0,mon:1,tue:2,wed:3,thu:4,fri:5,sat:6};
+  const results=[];
+  tasks.forEach(t=>{
+    if(!t.recurring||t.recurring==='none')return;
+    let match=false;
+    if(t.recurring==='daily')match=true;
+    else if(t.recurring==='weekdays')match=dow>=0&&dow<=4; // Sun-Thu (Israel)
+    else if(t.recurring==='weekly')match=true; // always include, flexible
+    else if(dayMap[t.recurring]!==undefined)match=dow===dayMap[t.recurring];
+    if(match){
+      const tm=t.recurringTime?parseMin(t.recurringTime):9*60;
+      const dur=taskDur(t);
+      results.push({
+        id:uid(),taskId:t.id,name:t.name,
+        startTime:tm,endTime:tm+dur,
+        done:false,isBreak:false,isFixed:false,isPinned:false,
+        layerNote:t.layerable?'להקביל: '+t.layerable:null,
+        task:t,note:'🔁 חוזרת',
+        _recurring:true,
+      });
+    }
+  });
+  return results;
+}
+
 // ── SCHEDULE BUILDER ─────────────────────────────────────────────────
 
 function buildSchedule(tasks,wakeMin,mainTaskId,breakDur,dow,isToday){
@@ -798,6 +826,12 @@ function buildSchedule(tasks,wakeMin,mainTaskId,breakDur,dow,isToday){
       const tm=parseMin(time);
       items.push({id:uid(),taskId:t.id,name:t.name,startTime:tm,endTime:tm+taskDur(t),done:false,isBreak:false,isFixed:true,layerNote:null,task:t});
     }
+  });
+
+  // Add recurring tasks
+  const recurring=getRecurringTasksForDay(tasks,new Date());
+  recurring.forEach(r=>{
+    if(!items.some(i=>i.taskId===r.taskId))items.push(r);
   });
 
   // Sort
@@ -3863,6 +3897,43 @@ function TaskEditModal({task,onSave,onClose}){
                 return alerts.length?'📋 התראות: '+alerts.join(' → '):'🔕 ללא התראות';
               })()}
             </div>
+          </div>
+
+          {/* ── Recurring ── */}
+          <div style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:10,padding:'12px'}}>
+            <div style={{fontSize:12,fontWeight:700,color:'var(--text2)',marginBottom:10}}>🔁 משימה חוזרת</div>
+            <div className="form-row">
+              <div>
+                <label>תדירות שיבוץ אוטומטי</label>
+                <select value={form.recurring||'none'} onChange={e=>set('recurring',e.target.value)} style={{fontSize:13}}>
+                  <option value="none">ללא — ידני בלבד</option>
+                  <option value="daily">כל יום</option>
+                  <option value="weekdays">ימים א-ה</option>
+                  <option value="sun">כל יום ראשון</option>
+                  <option value="mon">כל יום שני</option>
+                  <option value="tue">כל יום שלישי</option>
+                  <option value="wed">כל יום רביעי</option>
+                  <option value="thu">כל יום חמישי</option>
+                  <option value="fri">כל יום שישי</option>
+                  <option value="sat">כל שבת</option>
+                  <option value="weekly">פעם בשבוע (יום גמיש)</option>
+                </select>
+              </div>
+              {form.recurring&&form.recurring!=='none'&&(
+                <div>
+                  <label>שעת שיבוץ</label>
+                  <input type="time" value={form.recurringTime||'09:00'} onChange={e=>set('recurringTime',e.target.value)}/>
+                </div>
+              )}
+            </div>
+            {form.recurring&&form.recurring!=='none'&&(
+              <div style={{marginTop:6,fontSize:11,color:'var(--accent)',fontWeight:600}}>
+                🔁 {form.recurring==='daily'?'כל יום':form.recurring==='weekdays'?'ימים א׳-ה׳':form.recurring==='weekly'?'פעם בשבוע':
+                  'כל יום '+(form.recurring==='sun'?'ראשון':form.recurring==='mon'?'שני':form.recurring==='tue'?'שלישי':
+                  form.recurring==='wed'?'רביעי':form.recurring==='thu'?'חמישי':form.recurring==='fri'?'שישי':'שבת')}
+                {' '}ב-{form.recurringTime||'09:00'}
+              </div>
+            )}
           </div>
         </div>
         <div style={{display:'flex',gap:8,marginTop:16}}>
