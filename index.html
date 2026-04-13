@@ -1196,7 +1196,7 @@ function DashboardScreen({tasks,setScreen,schedule}){
             <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'var(--text2)',marginBottom:5}}>
               <span>{fmtMin(currentItem.startTime)}</span>
               <span style={{fontWeight:700,color:currentPct>75?'#EF4444':currentPct>50?'#F97316':'var(--accent2)'}}>
-                ⏳ עוד {currentRemain} דקות
+                ⏳ עוד {fmtDuration(currentRemain)}
               </span>
               <span>{fmtMin(currentItem.endTime)}</span>
             </div>
@@ -1231,7 +1231,7 @@ function DashboardScreen({tasks,setScreen,schedule}){
             <div style={{flex:1}}>
               <div style={{fontSize:15,fontWeight:700,marginBottom:3}}>{nextItem.name}</div>
               <div style={{fontSize:12,color:'var(--text3)'}}>
-                {fmtMin(nextItem.startTime)} — בעוד {minsToNext} דקות
+                {fmtMin(nextItem.startTime)} — בעוד {fmtDuration(minsToNext)}
               </div>
             </div>
             <div style={{fontSize:28,fontWeight:900,color:'var(--accent2)',fontVariantNumeric:'tabular-nums'}}>{fmtMin(nextItem.startTime)}</div>
