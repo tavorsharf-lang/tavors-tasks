@@ -1408,6 +1408,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
       const updated=origSchedule.map(it=>{
         if(it.id!==id)return it;
         if(type==='move')return{...it,startTime:ns,endTime:ns+origDur};
+        else if(type==='resize-top'){const newStart=Math.max(0,Math.min(it.endTime-15,origStart+dmin));return{...it,startTime:newStart};}
         else{const nd=Math.max(5,origDur+dmin);return{...it,endTime:it.startTime+nd};}
       });
       pendingRef.current=updated;
@@ -2464,7 +2465,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                         {item.done?'✅':'⬜'}
                       </button>
                     )}
-                    <button className="action-btn" style={{fontSize:10,padding:'1px 4px',opacity:.7}}
+                    <button className="action-btn" style={{fontSize:14,padding:'3px 5px',opacity:1}}
                       onClick={e=>{e.stopPropagation();setEditItem(item);}}>✏️</button>
                     <button className="action-btn"
                       style={{fontSize:10,padding:'1px 4px',opacity:.7,color:item.isPinned?'#EAB308':'var(--text3)'}}
@@ -2474,7 +2475,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                     </button>
                     {!item.isBreak&&(
                       <div style={{position:'relative'}} onMouseDown={e=>e.stopPropagation()}>
-                        <button className="action-btn" style={{fontSize:10,padding:'1px 4px',opacity:.7}}
+                        <button className="action-btn" style={{fontSize:14,padding:'3px 5px',opacity:1}}
                           onClick={e=>{e.stopPropagation();setPostponeOpen(postponeOpen===item.id?null:item.id);}}>📅</button>
                         {postponeOpen===item.id&&(
                           <div className="postpone-menu">
@@ -2488,7 +2489,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                     {/* Split task button */}
                     {!item.isBreak&&!isShort&&(
                       <div style={{position:'relative'}} onMouseDown={e=>e.stopPropagation()}>
-                        <button className="action-btn" style={{fontSize:10,padding:'1px 4px',opacity:.7}}
+                        <button className="action-btn" style={{fontSize:14,padding:'3px 5px',opacity:1}}
                           title="פצל משימה"
                           onClick={e=>{e.stopPropagation();setSplitMenu(splitMenu===item.id?null:item.id);}}>✂️</button>
                         {splitMenu===item.id&&(
@@ -2525,7 +2526,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                         )}
                       </div>
                     )}
-                    <button className="action-btn" style={{fontSize:10,padding:'1px 4px',opacity:.7}}
+                    <button className="action-btn" style={{fontSize:14,padding:'3px 5px',opacity:1}}
                       onClick={e=>{e.stopPropagation();removeItem(item.id);}}>🗑️</button>
                   </div>
 
@@ -2540,7 +2541,16 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                   </div>
                 )}
 
-                {/* Resize handle */}
+                {/* Top resize handle — drag to change start time */}
+                <div
+                  style={{position:'absolute',top:0,left:0,right:0,height:8,
+                    cursor:'ns-resize',background:'transparent',
+                    display:'flex',alignItems:'center',justifyContent:'center'}}
+                  onMouseDown={e=>{e.stopPropagation();startGridDrag(e,item,'resize-top');}}
+                  onTouchStart={e=>{e.stopPropagation();startGridDrag(e,item,'resize-top');}}>
+                  <div style={{width:22,height:2,borderRadius:1,background:'var(--border)'}}/>
+                </div>
+                {/* Bottom resize handle — drag to change end time */}
                 <div
                   style={{position:'absolute',bottom:0,left:0,right:0,height:8,
                     cursor:'ns-resize',background:'transparent',
@@ -4091,6 +4101,7 @@ function WeeklyDayGrid({tasks,dateKey,entries,setEntries,onBack,dayLabel,dayDate
       const updated=origItems.map(it=>{
         if(it.id!==id)return it;
         if(type==='move')return{...it,startTime:ns,endTime:ns+origDur};
+        else if(type==='resize-top'){const newStart=Math.max(0,Math.min(it.endTime-15,origStart+dmin));return{...it,startTime:newStart};}
         else{const nd=Math.max(15,origDur+dmin);return{...it,endTime:it.startTime+nd};}
       });
       pendingRef.current=updated;
@@ -4296,7 +4307,7 @@ function WeeklyDayGrid({tasks,dateKey,entries,setEntries,onBack,dayLabel,dayDate
                         {item.done?'✅':'⬜'}
                       </button>
                     )}
-                    <button className="action-btn" style={{fontSize:10,padding:'1px 4px',opacity:.7}}
+                    <button className="action-btn" style={{fontSize:14,padding:'3px 5px',opacity:1}}
                       onClick={e=>{e.stopPropagation();setEditItem(item);}}>✏️</button>
                     <button className="action-btn"
                       style={{fontSize:10,padding:'1px 4px',opacity:.7,color:item.isPinned?'#EAB308':'var(--text3)'}}
@@ -4305,7 +4316,7 @@ function WeeklyDayGrid({tasks,dateKey,entries,setEntries,onBack,dayLabel,dayDate
                       }}>
                       {item.isPinned?'🔓':'🔒'}
                     </button>
-                    <button className="action-btn" style={{fontSize:10,padding:'1px 4px',opacity:.7}}
+                    <button className="action-btn" style={{fontSize:14,padding:'3px 5px',opacity:1}}
                       onClick={e=>{e.stopPropagation();removeItem(item.id);}}>🗑️</button>
                   </div>
 
