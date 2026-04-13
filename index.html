@@ -3778,20 +3778,6 @@ function WeeklySummaryScreen({history,tasks,weeklyPlan,schedule}){
     checkDate.setDate(checkDate.getDate()-1);
   }
 
-  // ── MONTHLY CALENDAR (5 weeks) ────────────────────────────
-  const calStart=new Date(today);
-  calStart.setDate(today.getDate()-today.getDay()-28); // go back to start 5 weeks ago (Sunday)
-  const calDays=[];
-  for(let i=0;i<35;i++){
-    const d=new Date(calStart);d.setDate(calStart.getDate()+i);
-    const dk=d.toISOString().split('T')[0];
-    const isFuture=d>today;
-    const isToday=dk===todayKey2;
-    const doneAct=isFuture?0:history.filter(h=>h.date===dk&&h.action==='done'&&tasks.find(t=>t.id===h.taskId&&t.rating==='A')).length;
-    const doneAll=isFuture?0:history.filter(h=>h.date===dk&&h.action==='done').length;
-    calDays.push({d,dk,isFuture,isToday,doneA:doneAct,doneAll});
-  }
-
   // ── FORECAST ──────────────────────────────────────────────
   const forecastTasks=tasks.filter(t=>
     ['A','B'].includes(t.rating)&&
@@ -3880,41 +3866,6 @@ function WeeklySummaryScreen({history,tasks,weeklyPlan,schedule}){
               </div>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* ── Monthly Calendar ── */}
-      <div className="card" style={{marginBottom:14}}>
-        <div style={{fontSize:13,fontWeight:700,marginBottom:10}}>📅 יומן 5 שבועות</div>
-        <div style={{display:'flex',gap:2,marginBottom:4}}>
-          {['א','ב','ג','ד','ה','ו','ש'].map(d=>(
-            <div key={d} style={{flex:1,textAlign:'center',fontSize:9,color:'var(--text3)',fontWeight:700}}>{d}</div>
-          ))}
-        </div>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2}}>
-          {calDays.map(({d,dk,isFuture,isToday,doneA:da,doneAll})=>{
-            const bg=isFuture?'var(--bg2)':
-              da>0?`rgba(34,197,94,${Math.min(1,0.25+da*0.25)})`:
-              doneAll>0?`rgba(99,102,241,${Math.min(1,0.15+doneAll*0.1)})`:
-              'rgba(239,68,68,.12)';
-            const border=isToday?'1px solid var(--accent)':isFuture?'1px solid transparent':'1px solid transparent';
-            return(
-              <div key={dk} title={`${d.getDate()}/${d.getMonth()+1}: ${da} A, ${doneAll} סה"כ`}
-                style={{aspectRatio:'1',borderRadius:3,background:bg,border,
-                  display:'flex',alignItems:'center',justifyContent:'center',
-                  fontSize:9,color:isFuture?'var(--text3)':da>0?'#fff':doneAll>0?'var(--accent2)':'var(--text3)',
-                  fontWeight:isToday?900:400,
-                  outline:isToday?'2px solid var(--accent)':'none',
-                }}>
-                {isToday?'●':da>0?da:''}
-              </div>
-            );
-          })}
-        </div>
-        <div style={{display:'flex',gap:10,marginTop:8,fontSize:10,color:'var(--text3)'}}>
-          <span>🟩 הושלמה A</span>
-          <span style={{color:'var(--accent2)'}}>🟦 בוצע (לא A)</span>
-          <span style={{color:'rgba(239,68,68,.6)'}}>🟥 לא בוצע כלום</span>
         </div>
       </div>
 
