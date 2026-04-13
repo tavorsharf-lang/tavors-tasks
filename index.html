@@ -14,6 +14,7 @@
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <!-- Firebase for cross-device sync -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <!-- Google Calendar API -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -22,15 +23,32 @@ const GCAL_CLIENT_ID='413356220147-3mqct4k49a35gph7i5p4qcujke506l1u.apps.googleu
 const GCAL_SCOPES='https://www.googleapis.com/auth/calendar.events';
 let _gcalToken=null;
 
+function gcalClearToken(){
+  _gcalToken=null;
+  localStorage.removeItem('tavors_gcal_token');
+  localStorage.removeItem('tavors_gcal_expiry');
+}
+
 function gcalAuth(){
   return new Promise((resolve,reject)=>{
     if(_gcalToken){resolve(_gcalToken);return;}
+    // Try restoring from localStorage
+    const saved=localStorage.getItem('tavors_gcal_token');
+    const expiry=parseInt(localStorage.getItem('tavors_gcal_expiry')||'0');
+    if(saved&&expiry>Date.now()+60000){
+      _gcalToken=saved;
+      resolve(saved);
+      return;
+    }
+    // No valid saved token — request new one
     const client=google.accounts.oauth2.initTokenClient({
       client_id:GCAL_CLIENT_ID,
       scope:GCAL_SCOPES,
       callback:(resp)=>{
         if(resp.error){reject(resp);return;}
         _gcalToken=resp.access_token;
+        localStorage.setItem('tavors_gcal_token',resp.access_token);
+        localStorage.setItem('tavors_gcal_expiry',String(Date.now()+(resp.expires_in||3600)*1000));
         resolve(_gcalToken);
       }
     });
@@ -431,6 +449,7 @@ const SYNC_KEYS = ['tavors_tasks','tavors_schedule','tavors_history','tavors_wee
 let _firebaseDB = null;
 let _syncRoom = localStorage.getItem(SYNC_ROOM_KEY) || '';
 let _syncReady = false;
+let _authUid = localStorage.getItem('tavors_auth_uid') || null;
 // Track last write timestamps to ignore own writes bouncing back
 const _lastWriteTs = {};
 
@@ -440,6 +459,12 @@ function initFirebase(){
   try{
     try{firebase.app();}catch(e){firebase.initializeApp(FIREBASE_CONFIG);}
     _firebaseDB=firebase.database();
+    // Anonymous Auth — protects data via Security Rules
+    firebase.auth().signInAnonymously().then(cred=>{
+      _authUid=cred.user.uid;
+      localStorage.setItem('tavors_auth_uid',_authUid);
+      console.log('🔐 Firebase Auth: signed in as',_authUid);
+    }).catch(e=>console.warn('Auth failed (offline?):', e.message));
     console.log('🔥 Firebase DB ready');
     return _firebaseDB;
   }catch(e){console.warn('Firebase init failed:',e);return null;}
@@ -448,7 +473,7 @@ function initFirebase(){
 function firebaseWrite(key,value){
   if(!_firebaseDB||!_syncRoom)return;
   const now=Date.now();
-  const payload={data:JSON.stringify(value),ts:now,device:_deviceId};
+  const payload={data:JSON.stringify(value),ts:now,device:_deviceId,uid:_authUid||null};
   _lastWriteTs[key]=now;
   _firebaseDB.ref(`rooms/${_syncRoom}/${key}`).set(payload)
     .then(()=>console.log('🔥 Written to Firebase:',key,'at',new Date().toLocaleTimeString()))
@@ -2337,7 +2362,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                   const count=await gcalSyncSchedule(schedule,tasks);
                   setGcalMsg(`✅ ${count} אירועים`);setTimeout(()=>setGcalMsg(''),4000);
                   if(navigator.vibrate)navigator.vibrate([100,50,100]);
-                }catch(e){console.error('GCal:',e);_gcalToken=null;setGcalMsg('❌ שגיאה');setTimeout(()=>setGcalMsg(''),4000);}
+                }catch(e){console.error('GCal:',e);gcalClearToken();setGcalMsg('❌ שגיאה');setTimeout(()=>setGcalMsg(''),4000);}
                 setGcalSyncing(false);
               }}
               style={gcalMsg.startsWith('✅')?{border:'1px solid var(--green)',color:'var(--green)',background:'rgba(34,197,94,.1)'}:{}}>
@@ -2359,7 +2384,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                   if(imported.length){setSchedule(p=>[...p,...imported].sort((a,b)=>a.startTime-b.startTime));setGcalMsg(`📥 +${imported.length}`);}
                   else{setGcalMsg('📥 אין חדשים');}
                   setTimeout(()=>setGcalMsg(''),3000);
-                }catch(e){console.error('GCal:',e);_gcalToken=null;setGcalMsg('שגיאה');setTimeout(()=>setGcalMsg(''),4000);}
+                }catch(e){console.error('GCal:',e);gcalClearToken();setGcalMsg('שגיאה');setTimeout(()=>setGcalMsg(''),4000);}
                 setGcalSyncing(false);
               }}>
               📥 ייבא
@@ -5173,7 +5198,7 @@ function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,s
               const count=await gcalSyncWeeklyPlan(weeklyPlan,days,tasks);
               setGcalMsg(`✅ ${count} אירועים`);setTimeout(()=>setGcalMsg(''),4000);
               if(navigator.vibrate)navigator.vibrate([100,50,100]);
-            }catch(e){console.error('GCal weekly:',e);_gcalToken=null;setGcalMsg('❌ שגיאה');setTimeout(()=>setGcalMsg(''),4000);}
+            }catch(e){console.error('GCal weekly:',e);gcalClearToken();setGcalMsg('❌ שגיאה');setTimeout(()=>setGcalMsg(''),4000);}
             setGcalSyncing(false);
           }}
           style={gcalMsg.startsWith('✅')?{border:'1px solid var(--green)',color:'var(--green)',background:'rgba(34,197,94,.1)'}:{}}>
@@ -5376,7 +5401,7 @@ function MonthGcalSendButton({weeklyPlan,tasks,viewYear,viewMonth}){
       }
       setMsg(`✅ ${totalCount} אירועים`);setTimeout(()=>setMsg(''),4000);
       if(navigator.vibrate)navigator.vibrate([100,50,100]);
-    }catch(e){console.error('GCal monthly:',e);_gcalToken=null;setMsg('❌ שגיאה');setTimeout(()=>setMsg(''),4000);}
+    }catch(e){console.error('GCal monthly:',e);gcalClearToken();setMsg('❌ שגיאה');setTimeout(()=>setMsg(''),4000);}
     setSyncing(false);
   }
   return(
