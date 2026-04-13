@@ -3060,12 +3060,22 @@ function AddToScheduleModal({tasks,setSchedule,setTasks,onClose}){
     layerable:false,dominoEffect:''
   });
   const setF=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const [saveToRepo,setSaveToRepo]=useState(true);
 
   function pickTask(id){
     setSel(id);
     if(id){
       const t=tasks.find(x=>x.id===Number(id));
       if(t) setDur(taskDur(t));
+      // Recall last used time for this task
+      try{
+        const lastTimes=JSON.parse(localStorage.getItem('tavors_last_times')||'{}');
+        if(lastTimes[id]){
+          setSt(lastTimes[id].st);
+          setDur(lastTimes[id].dur);
+          if(lastTimes[id].et)setEt(lastTimes[id].et);
+        }
+      }catch(e){}
     }
   }
 
@@ -3077,14 +3087,28 @@ function AddToScheduleModal({tasks,setSchedule,setTasks,onClose}){
         startTime:stm,endTime:stm+dur,done:false,isBreak:false,isFixed:false,
         layerNote:t?.layerable?'להקביל: '+t.layerable:null,task:t||null,note:''}]
         .sort((a,b)=>a.startTime-b.startTime));
+      // Remember last used time for this task
+      if(sel){try{
+        const lastTimes=JSON.parse(localStorage.getItem('tavors_last_times')||'{}');
+        lastTimes[sel]={st,dur,et};
+        localStorage.setItem('tavors_last_times',JSON.stringify(lastTimes));
+      }catch(e){}}
     } else {
-      // create new task and add to both repo + schedule
-      const newTask={...form,id:uid(),deadline:form.deadline||null};
-      if(setTasks) setTasks(p=>[...p,newTask]);
-      setSchedule(p=>[...p,{id:uid(),taskId:newTask.id,name:newTask.name,
-        startTime:stm,endTime:stm+dur,done:false,isBreak:false,isFixed:false,
-        layerNote:newTask.layerable?'להקביל: '+newTask.layerable:null,task:newTask,note:''}]
-        .sort((a,b)=>a.startTime-b.startTime));
+      if(saveToRepo){
+        // Save to repo + schedule
+        const newTask={...form,id:uid(),deadline:form.deadline||null};
+        if(setTasks) setTasks(p=>[...p,newTask]);
+        setSchedule(p=>[...p,{id:uid(),taskId:newTask.id,name:newTask.name,
+          startTime:stm,endTime:stm+dur,done:false,isBreak:false,isFixed:false,
+          layerNote:newTask.layerable?'להקביל: '+newTask.layerable:null,task:newTask,note:''}]
+          .sort((a,b)=>a.startTime-b.startTime));
+      }else{
+        // One-time only — don't save to repo
+        setSchedule(p=>[...p,{id:uid(),taskId:null,name:form.name,
+          startTime:stm,endTime:stm+dur,done:false,isBreak:false,isFixed:false,
+          layerNote:null,task:null,note:''}]
+          .sort((a,b)=>a.startTime-b.startTime));
+      }
     }
     onClose();
   }
@@ -3233,8 +3257,21 @@ function AddToScheduleModal({tasks,setSchedule,setTasks,onClose}){
               <label>השפעת דומינו</label>
               <textarea value={form.dominoEffect} onChange={e=>setF('dominoEffect',e.target.value)} rows={2} placeholder="מה קורה אם מסיימים..."/>
             </div>
-            <div style={{fontSize:11,color:'var(--green)',padding:'6px 10px',background:'rgba(34,197,94,.08)',borderRadius:8}}>
-              ✓ המשימה תתווסף גם למאגר המשימות
+            <div style={{display:'flex',gap:6,marginTop:4}}>
+              <button type="button" onClick={()=>setSaveToRepo(true)}
+                style={{flex:1,padding:'8px',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'inherit',
+                  border:`2px solid ${saveToRepo?'var(--green)':'var(--border)'}`,
+                  background:saveToRepo?'rgba(34,197,94,.1)':'transparent',
+                  color:saveToRepo?'var(--green)':'var(--text3)'}}>
+                📦 שמור במאגר
+              </button>
+              <button type="button" onClick={()=>setSaveToRepo(false)}
+                style={{flex:1,padding:'8px',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'inherit',
+                  border:`2px solid ${!saveToRepo?'var(--orange)':'var(--border)'}`,
+                  background:!saveToRepo?'rgba(249,115,22,.1)':'transparent',
+                  color:!saveToRepo?'var(--orange)':'var(--text3)'}}>
+                ⚡ חד פעמית
+              </button>
             </div>
           </>)}
         </div>
