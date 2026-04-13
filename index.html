@@ -413,7 +413,9 @@ function firebaseWrite(key,value){
   if(!_firebaseDB||!_syncRoom)return;
   const payload={data:JSON.stringify(value),ts:Date.now(),device:_deviceId};
   _lastWriteTs[key]=payload.ts;
-  _firebaseDB.ref(`rooms/${_syncRoom}/${key}`).set(payload).catch(e=>console.warn('write err:',e));
+  _firebaseDB.ref(`rooms/${_syncRoom}/${key}`).set(payload)
+    .then(()=>console.log('🔥 Written to Firebase:',key,'at',new Date().toLocaleTimeString()))
+    .catch(e=>console.warn('write err:',e));
 }
 
 // Unique device ID to distinguish own writes
