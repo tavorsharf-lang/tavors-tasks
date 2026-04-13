@@ -3183,22 +3183,29 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
 
       {editItem&&<ScheduleItemEditModal item={editItem} onSave={updated=>{
         setSchedule(p=>{
-          let next=p.map(i=>i.id===updated.id?updated:i);
+          // Match by id first, fallback to name
+          let found=false;
+          let next=p.map(i=>{
+            if(i.id===updated.id||((!found)&&i.name===editItem.name)){found=true;return{...updated,id:i.id};}
+            return i;
+          });
+          if(!found){
+            // Item not found at all — replace by adding it
+            next=[...p.filter(i=>i.name!==editItem.name),updated];
+          }
           // If travel enabled, add/update travel block before this task
+          const matchId=found?(next.find(i=>i.name===updated.name)||{}).id:updated.id;
           if(updated.requiresTravel&&updated.travelDuration){
             const travelName='🚗 נסיעה ל'+updated.name;
-            // Remove old travel block for this task
-            next=next.filter(i=>!i._travelFor||i._travelFor!==updated.id);
-            // Add new travel block
+            next=next.filter(i=>!i._travelFor||i._travelFor!==matchId);
             const travelStart=updated.startTime-updated.travelDuration;
             next.push({id:uid(),taskId:null,name:travelName,
               startTime:Math.max(0,travelStart),endTime:updated.startTime,
               done:false,isBreak:false,isFixed:false,isPinned:false,
               layerNote:null,task:null,note:`${updated.travelDuration} דקות נסיעה`,
-              _travelFor:updated.id});
+              _travelFor:matchId});
           }else{
-            // Remove travel block if travel was disabled
-            next=next.filter(i=>!i._travelFor||i._travelFor!==updated.id);
+            next=next.filter(i=>!i._travelFor||i._travelFor!==matchId);
           }
           return next.sort((a,b)=>a.startTime-b.startTime);
         });
