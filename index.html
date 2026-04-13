@@ -632,10 +632,9 @@ function dedup(key,data){
     if(clean.length<data.length){
       console.log(`🧹 Dedup ${key}: ${data.length} → ${clean.length} (removed ${data.length-clean.length} duplicates)`);
       try{localStorage.setItem(key,JSON.stringify(clean));}catch{}
-      // Push cleaned data to Firebase so other devices get it too
       setTimeout(()=>{if(_syncReady&&_syncRoom)firebaseWrite(key,clean);},1000);
-      return clean;
     }
+    return clean; // always return (includes autoBackground)
   }
   if(key==='tavors_weekly'&&data&&typeof data==='object'){
     let changed=false;
@@ -645,15 +644,15 @@ function dedup(key,data){
       const filtered=dedupArray(clean[dk]);
       if(filtered.length<clean[dk].length){
         console.log(`🧹 Dedup ${key}[${dk}]: ${clean[dk].length} → ${filtered.length}`);
-        clean[dk]=filtered;
         changed=true;
       }
+      clean[dk]=filtered; // always apply (includes autoBackground)
     }
     if(changed){
       try{localStorage.setItem(key,JSON.stringify(clean));}catch{}
       setTimeout(()=>{if(_syncReady&&_syncRoom)firebaseWrite(key,clean);},1000);
-      return clean;
     }
+    return clean; // always return
   }
   return data;
 }
