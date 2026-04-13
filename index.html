@@ -444,6 +444,22 @@ function startListeners(){
   console.log('👂 listeners active for room:',_syncRoom);
 }
 
+// ── Seed new tasks into localStorage (one-time) ──
+(function seedNewTasks(){
+  if(localStorage.getItem('tavors_tasks_v2'))return;
+  try{
+    const tasks=JSON.parse(localStorage.getItem('tavors_tasks')||'[]');
+    const newTasks=[
+      {id:28,name:'💇 תספורת',rating:'D',quadrant:3,domain:'תחזוקה',matrixScore:20,damageType:'zero',deadline:null,timeRequired:'40 דקות',frequency:'פעם בחודש',size:'קטנה',energyRequired:'נמוכה',energyEffect:'ניטרלי',entryBarrier:'התארגנות קלה',layerable:false,dominoEffect:'מראה מסודר',requiresTravel:true,travelDuration:20},
+      {id:29,name:'🏋️ חדר כושר',rating:'B',quadrant:2,domain:'בריאות',matrixScore:27,damageType:'fixed-daily',deadline:null,timeRequired:'שעה וחצי',frequency:'3 פעמים בשבוע',size:'גדולה',energyRequired:'בינונית',energyEffect:'מטעין',entryBarrier:'התארגנות קלה',layerable:'כן — פודקאסטים, מוזיקה',dominoEffect:'כושר = אנרגיה = ריכוז = פרודוקטיביות'},
+      {id:30,name:'🎾 טניס',rating:'B',quadrant:2,domain:'בריאות',matrixScore:25,damageType:'zero',deadline:null,timeRequired:'שעתיים',frequency:'1-2 פעמים בשבוע',size:'גדולה',energyRequired:'בינונית',energyEffect:'מטעין',entryBarrier:'התארגנות קלה',layerable:false,dominoEffect:'ספורט + כיף + בריאות',requiresTravel:true,travelDuration:20},
+    ];
+    newTasks.forEach(nt=>{if(!tasks.some(t=>t.id===nt.id))tasks.push(nt);});
+    localStorage.setItem('tavors_tasks',JSON.stringify(tasks));
+    localStorage.setItem('tavors_tasks_v2','1');
+  }catch(e){}
+})();
+
 // ── Seed calendar events into weekly plan (one-time) ──
 (function seedCalendarEvents(){
   if(localStorage.getItem('tavors_cal_seeded'))return;
