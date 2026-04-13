@@ -564,7 +564,7 @@ function stopListeners(){
 (function seedCourtWednesdays(){
   if(localStorage.getItem('tavors_court_wed_seeded'))return;
   const wp=JSON.parse(localStorage.getItem('tavors_weekly')||'{}');
-  const wednesdays=['2026-04-15','2026-04-22','2026-04-29','2026-05-06','2026-05-13','2026-05-20','2026-05-27','2026-06-03','2026-06-10'];
+  const wednesdays=['2026-04-08','2026-04-15','2026-04-22','2026-04-29','2026-05-06','2026-05-13','2026-05-20','2026-05-27','2026-06-03','2026-06-10'];
   const courtName='⚖️ בית משפט';
   wednesdays.forEach(dk=>{
     if(!wp[dk])wp[dk]=[];
@@ -603,13 +603,23 @@ if(document.readyState==='complete')tryAutoConnect();
 else window.addEventListener('load',tryAutoConnect);
 
 // ── DEDUP: clean up duplicate schedule/weekly items ──────────────────
+// Names that are always background tasks
+const BACKGROUND_NAMES=['בית משפט','קליניקה שופטים'];
+
+function autoBackground(item){
+  if(item.isBackground)return item;
+  const name=(item.name||'');
+  if(BACKGROUND_NAMES.some(n=>name.includes(n)))return{...item,isBackground:true};
+  return item;
+}
+
 function dedupArray(arr){
   if(!Array.isArray(arr)||!arr.length)return arr;
-  // Same name on same day = keep only the first one
+  // Auto-mark background items + deduplicate
   const seen=new Set();
-  return arr.filter(it=>{
+  return arr.map(autoBackground).filter(it=>{
     const name=(it.name||'').trim();
-    if(!name)return true; // keep unnamed items
+    if(!name)return true;
     if(seen.has(name))return false;
     seen.add(name);
     return true;
