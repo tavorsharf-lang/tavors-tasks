@@ -635,6 +635,30 @@ function domainColor(d){return DOMAIN_COLORS[d]||{bg:'var(--card)',border:'var(-
 const PX_DEFAULT=2; // pixels per minute in the time grid (default)
 let PX=PX_DEFAULT; // mutable — updated by zoom
 
+// ── Confetti effect ──
+function confetti(x,y){
+  const colors=['#D97706','#16A34A','#3B82F6','#EC4899','#8B5CF6','#F59E0B'];
+  const container=document.createElement('div');
+  container.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999';
+  document.body.appendChild(container);
+  for(let i=0;i<25;i++){
+    const p=document.createElement('div');
+    const size=4+Math.random()*6;
+    const color=colors[Math.floor(Math.random()*colors.length)];
+    const angle=Math.random()*Math.PI*2;
+    const speed=80+Math.random()*120;
+    const dx=Math.cos(angle)*speed;
+    const dy=Math.sin(angle)*speed-50;
+    p.style.cssText=`position:absolute;left:${x}px;top:${y}px;width:${size}px;height:${size}px;background:${color};border-radius:${Math.random()>.5?'50%':'2px'};opacity:1;transition:all .8s cubic-bezier(.25,.46,.45,.94)`;
+    container.appendChild(p);
+    requestAnimationFrame(()=>{
+      p.style.transform=`translate(${dx}px,${dy}px) rotate(${Math.random()*360}deg)`;
+      p.style.opacity='0';
+    });
+  }
+  setTimeout(()=>container.remove(),900);
+}
+
 function fmtDuration(mins){
   if(!mins||mins<=0)return'';
   if(mins<60)return`${mins} דקות`;
@@ -1679,11 +1703,14 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
     setMode('view');
   }
 
-  function toggleDone(id){
+  function toggleDone(id,e){
     const it=schedule.find(i=>i.id===id);
     if(it&&!it.done){
       setHistory(p=>[...p,{taskId:it.taskId,name:it.name,date:todayKey(),action:'done'}]);
       playSound('done');
+      // Confetti!
+      if(e){const rect=e.currentTarget.getBoundingClientRect();confetti(rect.left+rect.width/2,rect.top);}
+      else{confetti(window.innerWidth/2,window.innerHeight/2);}
       // Check if this unblocks any dependent tasks — flash them
       const unblocked=schedule.filter(i=>i.dependsOn===id);
       if(unblocked.length){
@@ -2591,7 +2618,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                     onMouseDown={e=>e.stopPropagation()}>
                     {!item.isBreak&&(
                       <button className="action-btn" style={{fontSize:18,padding:'4px 6px',opacity:.9,minWidth:34,minHeight:34}}
-                        onClick={e=>{e.stopPropagation();toggleDone(item.id);}}>
+                        onClick={e=>{e.stopPropagation();toggleDone(item.id,e);}}>
                         {item.done?'✅':'⬜'}
                       </button>
                     )}
@@ -4545,7 +4572,7 @@ function WeeklyDayGrid({tasks,dateKey,entries,setEntries,onBack,dayLabel,dayDate
                     onMouseDown={e=>e.stopPropagation()}>
                     {!item.isBreak&&(
                       <button className="action-btn" style={{fontSize:18,padding:'4px 6px',opacity:.9,minWidth:34,minHeight:34}}
-                        onClick={e=>{e.stopPropagation();toggleDone(item.id);}}>
+                        onClick={e=>{e.stopPropagation();toggleDone(item.id,e);}}>
                         {item.done?'✅':'⬜'}
                       </button>
                     )}
