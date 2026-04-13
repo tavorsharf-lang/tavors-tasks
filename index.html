@@ -1419,8 +1419,8 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
       // Pinned items are anchors — never moved by domino shift
       if(cur.isPinned){out.push(cur);stopShift=false;continue;}
       if(stopShift){out.push(cur);continue;}
-      // Don't push items away from the dragged item — allow overlap
-      if(draggedId&&(cur.id===draggedId||prev.id===draggedId)){out.push(cur);continue;}
+      // Don't move the dragged item itself — it stays where the user put it
+      if(draggedId&&cur.id===draggedId){out.push(cur);continue;}
       const minStart=prev.endTime+buf;
       if(cur.startTime<minStart){
         const dur=cur.endTime-cur.startTime;
