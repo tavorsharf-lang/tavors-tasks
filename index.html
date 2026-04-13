@@ -511,6 +511,15 @@ function startListeners(){
   console.log('👂 listeners active for room:',_syncRoom);
 }
 
+function stopListeners(){
+  if(!_firebaseDB||!_syncRoom)return;
+  SYNC_KEYS.forEach(key=>{
+    _firebaseDB.ref(`rooms/${_syncRoom}/${key}`).off();
+  });
+  _syncReady=false;
+  console.log('🔇 listeners stopped for room:',_syncRoom);
+}
+
 // ── Seed new tasks into localStorage (one-time) ──
 (function seedNewTasks(){
   if(localStorage.getItem('tavors_tasks_v2'))return;
@@ -5534,19 +5543,17 @@ function App(){
         else console.log('🛡️ Skipped pushing empty',k,'to Firebase');
       }catch{}
     });
-    // Start listeners + reload to fully activate
+    // Start listeners
     startListeners();
     setSyncStatus('connected');
     setSyncRoom(r);
-    // Reload to ensure all hooks pick up the new state
-    setTimeout(()=>window.location.reload(),500);
   }
 
   function disconnectSync(){
+    stopListeners();
     _syncRoom='';_syncReady=false;
     localStorage.removeItem(SYNC_ROOM_KEY);
     setSyncRoom('');setSyncStatus('off');
-    window.location.reload();
   }
 
   // Feature 11: time-based theme
