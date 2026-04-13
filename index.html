@@ -4464,8 +4464,9 @@ function WeeklyDayGrid({tasks,dateKey,entries,setEntries,onBack,dayLabel,dayDate
 
 // weeklyPlan structure: { "2026-04-09": [{taskId, name, time, note}, ...], ... }
 
-function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,setHistory,parkedItems,setParkedItems,undoFlashTs}){
+function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,setHistory,parkedItems,setParkedItems,undoFlashTs,setScreen}){
   const [weekOffset,setWeekOffset]=useState(0);
+  const [calView,setCalView]=useState('week'); // 'week' or 'month'
   const [addModal,setAddModal]=useState(null);
   const [editEntry,setEditEntry]=useState(null);
   const [expandDay,setExpandDay]=useState(null);
@@ -4630,9 +4631,28 @@ function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,s
         <button className="btn btn-ghost btn-sm" onClick={()=>setWeekOffset(w=>w+1)}>← הבא</button>
       </div>
 
-      {weekOffset!==0&&(
-        <button className="btn btn-ghost btn-sm" style={{marginBottom:10,fontSize:11}} onClick={()=>setWeekOffset(0)}>חזור לשבוע הנוכחי</button>
+      <div style={{display:'flex',gap:6,marginBottom:10}}>
+        {weekOffset!==0&&(
+          <button className="btn btn-ghost btn-sm" style={{fontSize:11}} onClick={()=>setWeekOffset(0)}>חזור לשבוע הנוכחי</button>
+        )}
+        <button className="btn btn-ghost btn-sm"
+          style={{border:`1px solid ${calView==='month'?'var(--accent)':'var(--border)'}`,
+            background:calView==='month'?'rgba(217,119,6,.1)':'transparent',
+            color:calView==='month'?'var(--accent)':'var(--text3)'}}
+          onClick={()=>setCalView(v=>v==='week'?'month':'week')}>
+          {calView==='week'?'📆 חודשי':'📅 שבועי'}
+        </button>
+      </div>
+
+      {/* ═══ MONTHLY VIEW (inline) ═══ */}
+      {calView==='month'&&(
+        <MonthlyYearlyScreen tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan}
+          history={history} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems}
+          undoFlashTs={undoFlashTs} setScreen={setScreen||((s)=>{})}/>
       )}
+
+      {/* ═══ WEEKLY VIEW ═══ */}
+      {calView==='week'&&<>
 
       {/* ═══ HEAT MAP STRIP ═══ */}
       <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:12,padding:'12px 14px',marginBottom:12}}>
@@ -4788,6 +4808,8 @@ function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,s
       </div>
 
       {addModal&&<WeeklyAddModal tasks={tasks} onSave={e=>{addEntry(addModal,e);setAddModal(null);}} onClose={()=>setAddModal(null)}/>}
+
+      </>}{/* end calView==='week' */}
     </div>
   );
 }
@@ -5066,7 +5088,6 @@ const NAV=[
   {id:'schedule',label:'הלוז שלי',icon:'📋'},
   {id:'tasks',label:'מאגר',icon:'📦'},
   {id:'weekly',label:'שבועי',icon:'📅'},
-  {id:'monthly',label:'חודשי',icon:'📆'},
   {id:'summary',label:'סיכום',icon:'📈'},
 ];
 
@@ -5505,7 +5526,7 @@ function App(){
       {dualLayout?(
         <div className="main-content desktop-dual-col">
           <div className="dual-left">
-            <WeeklyScheduleScreen key={weeklyKey+1000} tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} history={history} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>
+            <WeeklyScheduleScreen key={weeklyKey+1000} tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} history={history} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs} setScreen={setScreen}/>
           </div>
           <div className="dual-right">
             {screen==='dashboard'&&<DashboardScreen tasks={tasks} setScreen={setScreen} schedule={schedule}/>}
@@ -5513,7 +5534,7 @@ function App(){
             {screen==='pressure'&&<PressureModeScreen tasks={tasks} setScreen={setScreen}/>}
             {screen==='tasks'&&<TaskRepositoryScreen tasks={tasks} setTasks={setTasks} history={history}/>}
             {screen==='summary'&&<WeeklySummaryScreen history={history} tasks={tasks} weeklyPlan={weeklyPlan} schedule={schedule}/>}
-            {screen==='weekly'&&<WeeklyScheduleScreen key={weeklyKey} tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} history={history} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>}
+            {screen==='weekly'&&<WeeklyScheduleScreen key={weeklyKey} tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} history={history} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs} setScreen={setScreen}/>}
             {screen==='monthly'&&<MonthlyYearlyScreen tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} history={history} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs} setScreen={setScreen}/>}
           </div>
         </div>
@@ -5524,7 +5545,7 @@ function App(){
           {screen==='pressure'&&<PressureModeScreen tasks={tasks} setScreen={setScreen}/>}
           {screen==='tasks'&&<TaskRepositoryScreen tasks={tasks} setTasks={setTasks} history={history}/>}
           {screen==='summary'&&<WeeklySummaryScreen history={history} tasks={tasks} weeklyPlan={weeklyPlan} schedule={schedule}/>}
-          {screen==='weekly'&&<WeeklyScheduleScreen key={weeklyKey} tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} history={history} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>}
+          {screen==='weekly'&&<WeeklyScheduleScreen key={weeklyKey} tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} history={history} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs} setScreen={setScreen}/>}
           {screen==='monthly'&&<MonthlyYearlyScreen tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} history={history} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs} setScreen={setScreen}/>}
         </div>
       )}
