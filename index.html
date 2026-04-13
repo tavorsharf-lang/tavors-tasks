@@ -1021,9 +1021,10 @@ function buildSchedule(tasks,wakeMin,mainTaskId,breakDur,dow,isToday){
   // Sort
   items.sort((a,b)=>a.startTime-b.startTime);
 
-  // Fix overlaps for non-fixed
+  // Fix overlaps for non-fixed (skip background items — they allow overlap)
   let prev=items[0]?.startTime||wakeMin;
   for(const it of items){
+    if(it.isBackground)continue; // background items don't push others
     if(!it.isFixed&&it.startTime<prev){
       const dur=it.endTime-it.startTime;
       it.startTime=prev;it.endTime=prev+dur;
@@ -1174,8 +1175,8 @@ const SCHEDULE_TEMPLATES={
       if(physio)push(physio,10,'פיזיותרפיה (בוקר)',false);
       push(null,15,'התארגנות ויציאה',false);
 
-      // Court block — fixed
-      items.push({id:uid(),taskId:null,name:'⚖️ בית משפט',startTime:9*60,endTime:17*60,done:false,isBreak:false,isFixed:true,layerNote:null,task:null,note:'יום שלם — קליניקה / דיונים / צפייה'});
+      // Court block — background (rituals can overlap)
+      items.push({id:uid(),taskId:null,name:'⚖️ בית משפט',startTime:9*60,endTime:17*60,done:false,isBreak:false,isFixed:true,isBackground:true,layerNote:null,task:null,note:'יום שלם — קליניקה / דיונים / צפייה'});
 
       // After court
       cur=17*60;
@@ -1247,7 +1248,15 @@ const SCHEDULE_TEMPLATES={
 // ── SHARED LAYOUT HELPERS ─────────────────────────────────────────────
 function computeOverlapLayout(items){
   if(!items.length)return{};
-  const sorted=[...items].sort((a,b)=>a.startTime-b.startTime);
+  // Background (full-day) items span full width behind everything
+  const bg=items.filter(i=>i.isBackground);
+  const fg=items.filter(i=>!i.isBackground);
+  const result={};
+  // Background items: always full width, low z
+  bg.forEach(item=>{result[item.id]={col:0,totalCols:1,isBg:true};});
+  // Foreground: compute overlap layout ignoring background items
+  if(!fg.length)return result;
+  const sorted=[...fg].sort((a,b)=>a.startTime-b.startTime);
   const cols=[];
   const assigned={};
   for(const item of sorted){
@@ -1256,7 +1265,6 @@ function computeOverlapLayout(items){
     cols[c]=item.endTime;
     assigned[item.id]=c;
   }
-  const result={};
   for(const item of sorted){
     const concurrent=sorted.filter(o=>o.id!==item.id&&o.startTime<item.endTime&&o.endTime>item.startTime);
     if(!concurrent.length){result[item.id]={col:0,totalCols:1};}
@@ -1849,7 +1857,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
     setWeeklyPlan(prev=>({...prev,[viewDateKey]:next.map(it=>({
       id:it.id,taskId:it.taskId||null,name:it.name,time:fmtMin(it.startTime),
       startTime:it.startTime,endTime:it.endTime,note:it.note||'',done:it.done||false,
-      isBreak:it.isBreak||false,isFixed:it.isFixed||false,isPinned:it.isPinned||false,
+      isBreak:it.isBreak||false,isFixed:it.isFixed||false,isPinned:it.isPinned||false,isBackground:it.isBackground||false,
       layerNote:it.layerNote||null,dependsOn:it.dependsOn||null,
     }))}));
   };
@@ -2628,20 +2636,22 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
             const catStyle=CAT_COLORS[cat];
             const dmgColor=item.task?DC[item.task.damageType]:'var(--border)';
             // Overlap layout — left/right based on column
-            const{col,totalCols}=overlapLayout[item.id]||{col:0,totalCols:1};
-            const cardLeft=totalCols===1?3:`calc(${col/totalCols*100}% + 3px)`;
-            const cardRight=totalCols===1?3:`calc(${(totalCols-col-1)/totalCols*100}% + 3px)`;
+            const layout=overlapLayout[item.id]||{col:0,totalCols:1};
+            const{col,totalCols}=layout;
+            const isBgItem=item.isBackground||layout.isBg;
+            const cardLeft=isBgItem?0:(totalCols===1?3:`calc(${col/totalCols*100}% + 3px)`);
+            const cardRight=isBgItem?0:(totalCols===1?3:`calc(${(totalCols-col-1)/totalCols*100}% + 3px)`);
             // Hologram color depending on zone
             const isUserTask=!isFixedDaily(item.name)&&!item.isBreak;
             const taskDomain=item.task?.domain||'';
             const dc=domainColor(taskDomain);
-            const cardBg=isUserTask?dc.bg:'var(--card)';
-            const userBorderLeft=isUserTask&&!isDragging?`3px solid ${dc.border}`:undefined;
+            const cardBg=isBgItem?'rgba(99,102,241,0.06)':(isUserTask?dc.bg:'var(--card)');
+            const userBorderLeft=isUserTask&&!isDragging&&!isBgItem?`3px solid ${dc.border}`:undefined;
             const holoBg=isDragging?(dragOverPinned?'rgba(239,68,68,0.18)':dragOverGreen?'rgba(34,197,94,0.15)':'rgba(99,102,241,0.12)'):(xrayMode?catStyle.bg:cardBg);
-            const holoBorder=isDragging?(dragOverPinned?'1px solid rgba(239,68,68,.5)':dragOverGreen?'1px solid rgba(34,197,94,.5)':'1px solid var(--accent)'):(item.isPinned?`2px solid #EAB308`:`1px solid ${xrayMode?catStyle.border:'var(--border)'}`);
+            const holoBorder=isDragging?(dragOverPinned?'1px solid rgba(239,68,68,.5)':dragOverGreen?'1px solid rgba(34,197,94,.5)':'1px solid var(--accent)'):(isBgItem?'1px dashed rgba(99,102,241,.3)':(item.isPinned?`2px solid #EAB308`:`1px solid ${xrayMode?catStyle.border:'var(--border)'}`));
             const holoShadow=isDragging?(dragOverPinned?'0 0 0 2px rgba(239,68,68,.5),0 8px 24px rgba(239,68,68,.3)':dragOverGreen?'0 0 0 2px rgba(34,197,94,.5),0 8px 24px rgba(34,197,94,.25)':'0 8px 32px rgba(31,38,135,.45)'):isFocus?'0 0 0 2px var(--accent),0 0 16px rgba(99,102,241,.5)':'none';
             // Focus mode: dim non-focused items
-            const itemOpacity=item.done?0.4:(focusItem&&!isFocus&&!isDragging)?0.22:1;
+            const itemOpacity=item.done?0.4:isBgItem?0.55:(focusItem&&!isFocus&&!isDragging)?0.22:1;
             // Undo flash animation
             const cardAnim=isShaking?'redShake .4s ease':isSnapPulsing?'snapPulse .28s ease':undoFlash?'undoFlash .65s ease':undefined;
 
@@ -2655,13 +2665,14 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                   borderBottom:holoBorder,
                   borderRight:isDragging?holoBorder:`3px solid ${dmgColor}`,
                   borderLeft:userBorderLeft||holoBorder,
-                  borderRadius:6,overflow:'visible',
-                  cursor:(item.isPinned&&!isDragging)?'default':isDragging?'grabbing':'grab',
+                  borderRadius:isBgItem?10:6,overflow:'visible',
+                  cursor:isBgItem?'default':(item.isPinned&&!isDragging)?'default':isDragging?'grabbing':'grab',
                   opacity:itemOpacity,
                   boxShadow:isShaking?'0 0 0 3px rgba(239,68,68,.7)':holoShadow,
                   animation:cardAnim,
+                  pointerEvents:isBgItem?'none':'auto',
                   transition:draggingId&&!isShaking?'none':'top .18s ease, height .18s ease, opacity .2s',
-                  zIndex:isDragging?25:isFocus?5:1,
+                  zIndex:isBgItem?0:(isDragging?25:isFocus?5:1),
                 }}
                 draggable
                 onDragStart={e=>{
@@ -2698,15 +2709,26 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                 )}
 
                 {/* Pinned indicator strip */}
-                {item.isPinned&&(
+                {item.isPinned&&!isBgItem&&(
                   <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:'#EAB308'}}/>
+                )}
+
+                {/* Background item: simple centered label */}
+                {isBgItem&&(
+                  <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',
+                    alignItems:'center',justifyContent:'center',pointerEvents:'none',gap:2}}>
+                    <div style={{fontSize:16,fontWeight:800,color:'rgba(99,102,241,.45)',letterSpacing:1}}>{item.name}</div>
+                    <div style={{fontSize:10,color:'rgba(99,102,241,.35)',fontWeight:600}}>
+                      {fmtMin(item.startTime)}–{fmtMin(item.endTime)} · משימת רקע
+                    </div>
+                  </div>
                 )}
 
                 {/* Content */}
                   <div style={{
                     padding:isShort?'3px 5px':'6px 8px',
                     height:'calc(100% - 8px)',
-                    display:'flex',
+                    display:isBgItem?'none':'flex',
                     flexDirection:isShort?'row':'column',
                     alignItems:isShort?'center':'flex-start',
                     gap:isShort?5:3,
@@ -3397,6 +3419,7 @@ function AddToScheduleModal({tasks,setSchedule,setTasks,onClose}){
   const [dur,setDur]=useState(30);
   const [endTimeMode,setEndTimeMode]=useState(false);
   const [et,setEt]=useState('12:30');
+  const [isBackground,setIsBackground]=useState(false);
   // full task fields for new task
   const [form,setForm]=useState({
     name:'',rating:'C',quadrant:2,domain:'',matrixScore:20,
@@ -3426,11 +3449,12 @@ function AddToScheduleModal({tasks,setSchedule,setTasks,onClose}){
 
   function add(){
     const stm=parseMin(st);
+    const bgFlag=isBackground?{isBackground:true}:{};
     if(mode==='pick'){
       const t=tasks.find(x=>x.id===Number(sel));
       setSchedule(p=>[...p,{id:uid(),taskId:t?t.id:null,name:t?t.name:'',
         startTime:stm,endTime:stm+dur,done:false,isBreak:false,isFixed:false,
-        layerNote:t?.layerable?'להקביל: '+t.layerable:null,task:t||null,note:''}]
+        layerNote:t?.layerable?'להקביל: '+t.layerable:null,task:t||null,note:'',...bgFlag}]
         .sort((a,b)=>a.startTime-b.startTime));
       // Remember last used time for this task
       if(sel){try{
@@ -3440,18 +3464,16 @@ function AddToScheduleModal({tasks,setSchedule,setTasks,onClose}){
       }catch(e){}}
     } else {
       if(saveToRepo){
-        // Save to repo + schedule
         const newTask={...form,id:uid(),deadline:form.deadline||null};
         if(setTasks) setTasks(p=>[...p,newTask]);
         setSchedule(p=>[...p,{id:uid(),taskId:newTask.id,name:newTask.name,
           startTime:stm,endTime:stm+dur,done:false,isBreak:false,isFixed:false,
-          layerNote:newTask.layerable?'להקביל: '+newTask.layerable:null,task:newTask,note:''}]
+          layerNote:newTask.layerable?'להקביל: '+newTask.layerable:null,task:newTask,note:'',...bgFlag}]
           .sort((a,b)=>a.startTime-b.startTime));
       }else{
-        // One-time only — don't save to repo
         setSchedule(p=>[...p,{id:uid(),taskId:null,name:form.name,
           startTime:stm,endTime:stm+dur,done:false,isBreak:false,isFixed:false,
-          layerNote:null,task:null,note:''}]
+          layerNote:null,task:null,note:'',...bgFlag}]
           .sort((a,b)=>a.startTime-b.startTime));
       }
     }
@@ -3512,6 +3534,16 @@ function AddToScheduleModal({tasks,setSchedule,setTasks,onClose}){
               )}
             </div>
           </div>
+
+          {/* Background / full-day toggle */}
+          <button type="button" onClick={()=>setIsBackground(b=>!b)}
+            style={{width:'100%',padding:'8px 12px',borderRadius:8,fontSize:12,fontWeight:600,
+              cursor:'pointer',fontFamily:'inherit',textAlign:'right',
+              border:`2px solid ${isBackground?'rgba(99,102,241,.5)':'var(--border)'}`,
+              background:isBackground?'rgba(99,102,241,.1)':'transparent',
+              color:isBackground?'var(--accent)':'var(--text3)'}}>
+            {isBackground?'🏢 משימת רקע (יום שלם) — ריטואלים ייכנסו בתוכה':'🏢 סמן כמשימת רקע (יום שלם)'}
+          </button>
 
           {mode==='pick'&&(
             <div>
@@ -4472,7 +4504,7 @@ function WeeklyDayGrid({tasks,dateKey,entries,setEntries,onBack,dayLabel,dayDate
       time:fmtMin(it.startTime),
       startTime:it.startTime,endTime:it.endTime,
       note:it.note||'',done:it.done||false,
-      isBreak:it.isBreak||false,isFixed:it.isFixed||false,isPinned:it.isPinned||false,
+      isBreak:it.isBreak||false,isFixed:it.isFixed||false,isPinned:it.isPinned||false,isBackground:it.isBackground||false,
       layerNote:it.layerNote||null,
     })));
   }
@@ -4917,7 +4949,7 @@ function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,s
           id:it.id,taskId:it.taskId||null,name:it.name,
           time:fmtMin(it.startTime),startTime:it.startTime,endTime:it.endTime,
           note:it.note||'',done:it.done||false,
-          isBreak:it.isBreak||false,isFixed:it.isFixed||false,isPinned:it.isPinned||false,
+          isBreak:it.isBreak||false,isFixed:it.isFixed||false,isPinned:it.isPinned||false,isBackground:it.isBackground||false,
           layerNote:it.layerNote||null,dependsOn:it.dependsOn||null,splitGroup:it.splitGroup||null,
         }));
         return{...prev,[expandDay]:entries};
@@ -5322,7 +5354,7 @@ function MonthlyYearlyScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,se
         const entries=next.map(it=>({
           id:it.id,taskId:it.taskId||null,name:it.name,time:fmtMin(it.startTime),
           startTime:it.startTime,endTime:it.endTime,note:it.note||'',done:it.done||false,
-          isBreak:it.isBreak||false,isFixed:it.isFixed||false,isPinned:it.isPinned||false,
+          isBreak:it.isBreak||false,isFixed:it.isFixed||false,isPinned:it.isPinned||false,isBackground:it.isBackground||false,
           layerNote:it.layerNote||null,dependsOn:it.dependsOn||null,splitGroup:it.splitGroup||null,
         }));
         return{...prev,[expandDay]:entries};
