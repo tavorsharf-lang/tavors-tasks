@@ -486,22 +486,26 @@ function startListeners(){
   localStorage.setItem('tavors_cal_seeded','1');
 })();
 
-// Auto-connect if room was previously saved (delay to ensure Firebase SDK loaded)
-setTimeout(()=>{
-  if(FIREBASE_CONFIG.apiKey&&_syncRoom){
-    initFirebase();
-    if(_firebaseDB){
-      startListeners();
-      console.log('✅ Auto-connected to Firebase room:',_syncRoom);
-    }else{
-      console.warn('⚠️ Firebase SDK not ready, retrying...');
-      setTimeout(()=>{
-        initFirebase();
-        if(_firebaseDB)startListeners();
-      },2000);
-    }
+// Auto-connect if room was previously saved
+function tryAutoConnect(){
+  console.log('🔌 Trying auto-connect... firebase=',typeof firebase,'room=',_syncRoom);
+  if(!FIREBASE_CONFIG.apiKey||!_syncRoom)return;
+  if(typeof firebase==='undefined'){
+    console.log('⏳ Firebase SDK not loaded yet, retry in 1s...');
+    setTimeout(tryAutoConnect,1000);
+    return;
   }
-},500);
+  initFirebase();
+  if(_firebaseDB){
+    startListeners();
+    console.log('✅ Auto-connected to Firebase room:',_syncRoom,'syncReady=',_syncReady);
+  }else{
+    console.warn('❌ initFirebase failed');
+  }
+}
+// Start trying after page loads
+if(document.readyState==='complete')tryAutoConnect();
+else window.addEventListener('load',tryAutoConnect);
 
 // ── PERSISTENCE HOOK (localStorage + Firebase) ──────────────────────
 function usePersist(key,init){
