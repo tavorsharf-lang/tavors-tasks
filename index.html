@@ -5642,6 +5642,7 @@ const NAV=[
   {id:'tasks',label:'מאגר',icon:'📦'},
   {id:'weekly',label:'שבועי',icon:'📅'},
   {id:'summary',label:'סיכום',icon:'📈'},
+  {id:'settings',label:'הגדרות',icon:'⚙️'},
 ];
 
 // ── TIME THEME HELPER ────────────────────────────────────────────────
@@ -5871,201 +5872,17 @@ function App(){
               ↩
             </button>
           )}
-          <button onClick={()=>setShowHeaderMenu(m=>!m)}
-            style={{background:showHeaderMenu?'var(--accent)':'transparent',border:'1px solid var(--border)',borderRadius:8,
-              padding:'6px 10px',cursor:'pointer',fontSize:16,lineHeight:1,color:showHeaderMenu?'#fff':'var(--text)',transition:'.2s'}}>
+          <button onClick={()=>setScreen('settings')}
+            style={{background:screen==='settings'?'var(--accent)':'transparent',border:'1px solid var(--border)',borderRadius:8,
+              padding:'6px 10px',cursor:'pointer',fontSize:16,lineHeight:1,color:screen==='settings'?'#fff':'var(--text)',transition:'.2s'}}>
             ⚙️
           </button>
         </div>
       </div>
 
-      {/* ═══ Header Menu (collapsible) ═══ */}
-      {showHeaderMenu&&(
-        <div style={{background:'var(--card)',border:'1px solid var(--border)',borderBottom:'2px solid var(--accent)',
-          padding:'8px 16px',display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}>
-          <button onClick={()=>{setShowSyncPanel(true);setShowHeaderMenu(false);}}
-            style={{background:syncStatus==='connected'?'rgba(34,197,94,.15)':'transparent',
-              border:`1px solid ${syncStatus==='connected'?'var(--green)':'var(--border)'}`,borderRadius:8,
-              padding:'4px 9px',cursor:'pointer',fontSize:13,color:syncStatus==='connected'?'var(--green)':'var(--text3)'}}>
-            🔄
-          </button>
-          <button onClick={()=>{setGlobalSearch(true);setSearchQ('');setShowHeaderMenu(false);setTimeout(()=>searchRef.current?.focus(),100);}}
-            style={{background:'transparent',border:'1px solid var(--border)',borderRadius:8,
-              padding:'4px 9px',cursor:'pointer',fontSize:13,color:'var(--text3)'}}>
-            🔍
-          </button>
-          <button onClick={()=>setDeclutterMode(m=>!m)}
-            style={{background:declutterMode?'rgba(34,197,94,.15)':'transparent',
-              border:`1px solid ${declutterMode?'var(--green)':'var(--border)'}`,borderRadius:8,
-              padding:'4px 9px',cursor:'pointer',fontSize:13,color:declutterMode?'var(--green)':'var(--text3)'}}>
-            {declutterMode?'👁️':'🧹'}
-          </button>
-          <button onClick={()=>setIsDarkMode(m=>!m)}
-            style={{background:'transparent',border:'1px solid var(--border)',borderRadius:8,
-              padding:'4px 9px',cursor:'pointer',fontSize:15}}>
-            {isDarkMode?'☀️':'🌙'}
-          </button>
-          <button onClick={exportPDF}
-            style={{background:'transparent',border:'1px solid var(--border)',borderRadius:8,
-              padding:'4px 9px',cursor:'pointer',fontSize:13,color:'var(--text3)'}}>
-            🖨️
-          </button>
-          <button onClick={()=>setDualLayout(m=>!m)}
-            style={{background:dualLayout?'rgba(99,102,241,.15)':'transparent',
-              border:`1px solid ${dualLayout?'var(--accent)':'var(--border)'}`,borderRadius:8,
-              padding:'4px 9px',cursor:'pointer',fontSize:13,color:dualLayout?'var(--accent2)':'var(--text3)'}}>
-            📐
-          </button>
-        </div>
-      )}
+      {/* Header menu removed — all settings moved to Settings screen */}
 
-      {/* ═══ Sync Panel ═══ */}
-      {showSyncPanel&&(
-        <div className="modal-overlay" style={{zIndex:450}} onClick={()=>setShowSyncPanel(false)}>
-          <div className="modal" style={{maxWidth:440}} onClick={e=>e.stopPropagation()}>
-            <div style={{fontSize:20,fontWeight:900,marginBottom:16,display:'flex',alignItems:'center',gap:10}}>
-              🔄 סנכרון בין מכשירים
-              <button onClick={()=>setShowSyncPanel(false)} style={{marginRight:'auto',background:'none',border:'none',color:'var(--text3)',cursor:'pointer',fontSize:16}}>✕</button>
-            </div>
-
-            {/* Status */}
-            <div style={{padding:'12px 16px',borderRadius:10,marginBottom:16,
-              background:syncStatus==='connected'?'rgba(34,197,94,.08)':'rgba(99,102,241,.06)',
-              border:`1px solid ${syncStatus==='connected'?'rgba(34,197,94,.3)':'var(--border)'}`}}>
-              <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <div style={{width:10,height:10,borderRadius:'50%',
-                  background:syncStatus==='connected'?'var(--green)':syncStatus==='no-config'?'var(--orange)':'var(--text3)'}}/>
-                <span style={{fontWeight:700,fontSize:14}}>
-                  {syncStatus==='connected'?`מסונכרן — חדר "${syncRoom}"`:
-                   syncStatus==='no-config'?'נדרש הגדרת Firebase':
-                   syncStatus==='sdk-missing'?'Firebase SDK לא נטען — בדוק חיבור אינטרנט':
-                   syncStatus==='init-failed'?'שגיאה בהתחברות ל-Firebase':'לא מחובר'}
-                </span>
-              </div>
-              {syncStatus==='connected'&&(
-                <div style={{fontSize:11,color:'var(--text2)',marginTop:6}}>
-                  שינויים מסתנכרנים אוטומטית בזמן אמת בין כל המכשירים שמחוברים לאותו חדר.
-                </div>
-              )}
-            </div>
-
-            {/* Option A: Firebase Cloud Sync */}
-            <div className="card" style={{marginBottom:12}}>
-              <div style={{fontSize:14,fontWeight:800,marginBottom:8}}>☁️ סנכרון ענן (Firebase)</div>
-              <div style={{fontSize:11,color:'var(--text2)',marginBottom:12,lineHeight:1.6}}>
-                סנכרון אוטומטי בזמן אמת. הגדרה חד-פעמית:<br/>
-                1. היכנס ל-<span style={{color:'var(--accent2)'}}>console.firebase.google.com</span><br/>
-                2. צור פרויקט חדש (חינם)<br/>
-                3. Realtime Database → Create → Test mode<br/>
-                4. Project Settings → Web app → העתק config<br/>
-                5. ערוך את הקובץ והדבק ב-FIREBASE_CONFIG
-              </div>
-              {FIREBASE_CONFIG.apiKey?(
-                <div>
-                  <div style={{fontSize:12,marginBottom:8}}>
-                    <label style={{fontWeight:700}}>שם חדר סנכרון (אותו שם בשני המכשירים):</label>
-                  </div>
-                  <div style={{display:'flex',gap:8}}>
-                    <input value={syncRoom} onChange={e=>setSyncRoom(e.target.value)}
-                      placeholder="לדוגמה: tavors-room"
-                      style={{fontSize:14,padding:'10px 14px'}}/>
-                    {syncStatus!=='connected'&&syncStatus!=='cleaning'?(
-                      <button className="btn btn-primary" onClick={()=>activateSync(syncRoom)} disabled={!syncRoom.trim()}>
-                        חבר
-                      </button>
-                    ):(
-                      <div style={{display:'flex',gap:6}}>
-                        <button className="btn btn-danger" onClick={disconnectSync}>נתק</button>
-                        <button className="btn btn-ghost btn-sm" onClick={cleanFirebase}
-                          disabled={syncStatus==='cleaning'}
-                          style={{fontSize:11}}>
-                          {syncStatus==='cleaning'?'⏳ מנקה...':'🧹 נקה כפילויות'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ):(
-                <div style={{padding:'10px 14px',background:'rgba(249,115,22,.08)',border:'1px solid rgba(249,115,22,.3)',borderRadius:8,fontSize:12,color:'var(--orange)'}}>
-                  ⚠️ טרם הוגדר Firebase — ערוך את FIREBASE_CONFIG בקובץ ה-HTML
-                </div>
-              )}
-            </div>
-
-            {/* Option B: Manual Export/Import */}
-            <div className="card" style={{marginBottom:12}}>
-              <div style={{fontSize:14,fontWeight:800,marginBottom:8}}>📦 ייצוא / ייבוא ידני</div>
-              <div style={{fontSize:11,color:'var(--text2)',marginBottom:12,lineHeight:1.6}}>
-                ייצא את כל הנתונים כקובץ JSON. שלח לעצמך ב-AirDrop / WhatsApp / iCloud וייבא במכשיר השני.
-              </div>
-              <div style={{display:'flex',gap:8}}>
-                <button className="btn btn-primary btn-sm" onClick={()=>{exportAllData();}}
-                  style={{flex:1}}>
-                  📤 ייצוא נתונים
-                </button>
-                <button className="btn btn-ghost btn-sm" onClick={()=>fileInputRef.current?.click()}
-                  style={{flex:1}}>
-                  📥 ייבוא נתונים
-                </button>
-                <input ref={fileInputRef} type="file" accept=".json" style={{display:'none'}}
-                  onChange={e=>{if(e.target.files[0])importAllData(e.target.files[0]);}}/>
-              </div>
-            </div>
-
-            {/* Option C: Restore from backup */}
-            <div className="card" style={{marginBottom:12}}>
-              <div style={{fontSize:14,fontWeight:800,marginBottom:8}}>🔙 שחזור מגיבוי</div>
-              <div style={{fontSize:11,color:'var(--text2)',marginBottom:12,lineHeight:1.6}}>
-                המערכת שומרת גיבוי אוטומטי כל 10 דקות. אם משהו נמחק — אפשר לשחזר.
-              </div>
-              <button className="btn btn-ghost btn-sm" style={{width:'100%'}}
-                onClick={async()=>{
-                  if(!_firebaseDB||!_syncRoom){alert('צריך חיבור Firebase');return;}
-                  try{
-                    const snap=await _firebaseDB.ref(`backups/${_syncRoom}`).orderByKey().limitToLast(7).once('value');
-                    const data=snap.val();
-                    if(!data){alert('אין גיבויים');return;}
-                    const dates=Object.keys(data).sort().reverse();
-                    const options=[];
-                    dates.forEach(date=>{
-                      Object.keys(data[date]).sort().reverse().forEach(hour=>{
-                        const keys=Object.keys(data[date][hour]);
-                        options.push(`${date} ${hour}:00 (${keys.length} סוגים)`);
-                      });
-                    });
-                    const choice=prompt('בחר גיבוי לשחזור:\\n'+options.map((o,i)=>`${i+1}. ${o}`).join('\\n')+'\\n\\nהקלד מספר:');
-                    if(!choice)return;
-                    const idx=parseInt(choice)-1;
-                    if(isNaN(idx)||idx<0||idx>=options.length){alert('בחירה לא תקינה');return;}
-                    // Find the chosen backup
-                    let ci=0;
-                    for(const date of dates){
-                      for(const hour of Object.keys(data[date]).sort().reverse()){
-                        if(ci===idx){
-                          const backup=data[date][hour];
-                          _syncReady=false;
-                          Object.entries(backup).forEach(([key,val])=>{
-                            localStorage.setItem(key,val.data);
-                          });
-                          alert('✅ שוחזר מ-'+date+' '+hour+':00\\nהדף יתרענן עכשיו');
-                          location.reload();
-                          return;
-                        }
-                        ci++;
-                      }
-                    }
-                  }catch(e){alert('שגיאה: '+e.message);}
-                }}>
-                🔙 שחזר מגיבוי
-              </button>
-            </div>
-
-            <div style={{fontSize:10,color:'var(--text3)',textAlign:'center',lineHeight:1.6}}>
-              💡 גיבוי אוטומטי כל 10 דקות · ייצוא/ייבוא ידני · סנכרון Firebase
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Sync panel removed — moved to Settings screen */}
 
       {/* ═══ Feature 13: Daily Card Popup ═══ */}
       {showDailyCard&&(
@@ -6197,6 +6014,114 @@ function App(){
             {screen==='pressure'&&<PressureModeScreen tasks={tasks} setScreen={setScreen}/>}
             {screen==='tasks'&&<TaskRepositoryScreen tasks={tasks} setTasks={setTasks} history={history}/>}
             {screen==='summary'&&<WeeklySummaryScreen history={history} tasks={tasks} weeklyPlan={weeklyPlan} schedule={schedule}/>}
+            {screen==='settings'&&(
+              <div className="fi">
+                <h2 className="section-title">⚙️ הגדרות</h2>
+
+                {/* מראה */}
+                <div className="card" style={{marginBottom:12}}>
+                  <div style={{fontSize:14,fontWeight:800,marginBottom:10}}>🎨 מראה</div>
+                  <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>setIsDarkMode(m=>!m)}
+                      style={isDarkMode?{border:'1px solid var(--accent)',color:'var(--accent)',background:'rgba(99,102,241,.1)'}:{}}>
+                      {isDarkMode?'☀️ מצב בהיר':'🌙 מצב כהה'}
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>setAutoTheme(m=>!m)}
+                      style={autoTheme?{border:'1px solid var(--green)',color:'var(--green)',background:'rgba(34,197,94,.1)'}:{}}>
+                      {autoTheme?'🕐 ערכת נושא לפי שעה ✓':'🕐 ערכת נושא לפי שעה'}
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>setDeclutterMode(m=>!m)}
+                      style={declutterMode?{border:'1px solid var(--green)',color:'var(--green)',background:'rgba(34,197,94,.1)'}:{}}>
+                      {declutterMode?'🧹 מצב נקי ✓':'🧹 מצב נקי'}
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>setDualLayout(m=>!m)}
+                      style={dualLayout?{border:'1px solid var(--accent)',color:'var(--accent)',background:'rgba(99,102,241,.1)'}:{}}>
+                      {dualLayout?'📐 תצוגה כפולה ✓':'📐 תצוגה כפולה'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* כלים */}
+                <div className="card" style={{marginBottom:12}}>
+                  <div style={{fontSize:14,fontWeight:800,marginBottom:10}}>🔧 כלים</div>
+                  <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>{setGlobalSearch(true);setSearchQ('');setTimeout(()=>searchRef.current?.focus(),100);}}>
+                      🔍 חיפוש (Ctrl+K)
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={exportPDF}>
+                      🖨️ הדפסה / PDF
+                    </button>
+                  </div>
+                </div>
+
+                {/* סנכרון */}
+                <div className="card" style={{marginBottom:12}}>
+                  <div style={{fontSize:14,fontWeight:800,marginBottom:10}}>🔄 סנכרון</div>
+                  <div style={{padding:'10px 14px',borderRadius:8,marginBottom:10,
+                    background:syncStatus==='connected'?'rgba(34,197,94,.08)':'rgba(99,102,241,.06)',
+                    border:`1px solid ${syncStatus==='connected'?'rgba(34,197,94,.3)':'var(--border)'}`}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <div style={{width:10,height:10,borderRadius:'50%',
+                        background:syncStatus==='connected'?'var(--green)':'var(--text3)'}}/>
+                      <span style={{fontWeight:700,fontSize:13}}>
+                        {syncStatus==='connected'?`מסונכרן — חדר "${syncRoom}"`:'לא מחובר'}
+                      </span>
+                    </div>
+                  </div>
+                  {FIREBASE_CONFIG.apiKey&&(
+                    <div style={{display:'flex',gap:8,marginBottom:10}}>
+                      <input value={syncRoom} onChange={e=>setSyncRoom(e.target.value)}
+                        placeholder="שם חדר" style={{fontSize:13,padding:'8px 12px',flex:1}}/>
+                      {syncStatus!=='connected'&&syncStatus!=='cleaning'?(
+                        <button className="btn btn-primary btn-sm" onClick={()=>activateSync(syncRoom)} disabled={!syncRoom.trim()}>חבר</button>
+                      ):(
+                        <div style={{display:'flex',gap:6}}>
+                          <button className="btn btn-danger btn-sm" onClick={disconnectSync}>נתק</button>
+                          <button className="btn btn-ghost btn-sm" onClick={cleanFirebase} disabled={syncStatus==='cleaning'} style={{fontSize:11}}>
+                            {syncStatus==='cleaning'?'⏳':'🧹 נקה'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* נתונים */}
+                <div className="card" style={{marginBottom:12}}>
+                  <div style={{fontSize:14,fontWeight:800,marginBottom:10}}>💾 נתונים</div>
+                  <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:10}}>
+                    <button className="btn btn-primary btn-sm" onClick={exportAllData}>📤 ייצוא</button>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>fileInputRef.current?.click()}>📥 ייבוא</button>
+                    <input ref={fileInputRef} type="file" accept=".json" style={{display:'none'}}
+                      onChange={e=>{if(e.target.files[0])importAllData(e.target.files[0]);}}/>
+                    <button className="btn btn-ghost btn-sm"
+                      onClick={async()=>{
+                        if(!_firebaseDB||!_syncRoom){alert('צריך חיבור Firebase');return;}
+                        try{
+                          const snap=await _firebaseDB.ref(`backups/${_syncRoom}`).orderByKey().limitToLast(7).once('value');
+                          const data=snap.val();
+                          if(!data){alert('אין גיבויים');return;}
+                          const dates=Object.keys(data).sort().reverse();
+                          const options=[];
+                          dates.forEach(date=>{Object.keys(data[date]).sort().reverse().forEach(hour=>{
+                            options.push(`${date} ${hour}:00 (${Object.keys(data[date][hour]).length} סוגים)`);
+                          });});
+                          const choice=prompt('בחר גיבוי:\\n'+options.map((o,i)=>`${i+1}. ${o}`).join('\\n')+'\\nהקלד מספר:');
+                          if(!choice)return;const idx=parseInt(choice)-1;
+                          if(isNaN(idx)||idx<0||idx>=options.length){alert('לא תקין');return;}
+                          let ci=0;
+                          for(const date of dates){for(const hour of Object.keys(data[date]).sort().reverse()){
+                            if(ci===idx){Object.entries(data[date][hour]).forEach(([key,val])=>{localStorage.setItem(key,val.data);});
+                              alert('✅ שוחזר. הדף יתרענן');location.reload();return;}ci++;}}
+                        }catch(e){alert('שגיאה: '+e.message);}
+                      }}>🔙 שחזור מגיבוי</button>
+                  </div>
+                  <div style={{fontSize:10,color:'var(--text3)'}}>
+                    גיבוי אוטומטי כל 10 דקות · ייצוא/ייבוא JSON · שחזור מ-Firebase
+                  </div>
+                </div>
+              </div>
+            )}
             {screen==='weekly'&&<WeeklyScheduleScreen key={weeklyKey} tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} history={history} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs} setScreen={setScreen}/>}
             {screen==='monthly'&&<MonthlyYearlyScreen tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} history={history} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs} setScreen={setScreen}/>}
           </div>
@@ -6208,6 +6133,114 @@ function App(){
           {screen==='pressure'&&<PressureModeScreen tasks={tasks} setScreen={setScreen}/>}
           {screen==='tasks'&&<TaskRepositoryScreen tasks={tasks} setTasks={setTasks} history={history}/>}
           {screen==='summary'&&<WeeklySummaryScreen history={history} tasks={tasks} weeklyPlan={weeklyPlan} schedule={schedule}/>}
+            {screen==='settings'&&(
+              <div className="fi">
+                <h2 className="section-title">⚙️ הגדרות</h2>
+
+                {/* מראה */}
+                <div className="card" style={{marginBottom:12}}>
+                  <div style={{fontSize:14,fontWeight:800,marginBottom:10}}>🎨 מראה</div>
+                  <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>setIsDarkMode(m=>!m)}
+                      style={isDarkMode?{border:'1px solid var(--accent)',color:'var(--accent)',background:'rgba(99,102,241,.1)'}:{}}>
+                      {isDarkMode?'☀️ מצב בהיר':'🌙 מצב כהה'}
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>setAutoTheme(m=>!m)}
+                      style={autoTheme?{border:'1px solid var(--green)',color:'var(--green)',background:'rgba(34,197,94,.1)'}:{}}>
+                      {autoTheme?'🕐 ערכת נושא לפי שעה ✓':'🕐 ערכת נושא לפי שעה'}
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>setDeclutterMode(m=>!m)}
+                      style={declutterMode?{border:'1px solid var(--green)',color:'var(--green)',background:'rgba(34,197,94,.1)'}:{}}>
+                      {declutterMode?'🧹 מצב נקי ✓':'🧹 מצב נקי'}
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>setDualLayout(m=>!m)}
+                      style={dualLayout?{border:'1px solid var(--accent)',color:'var(--accent)',background:'rgba(99,102,241,.1)'}:{}}>
+                      {dualLayout?'📐 תצוגה כפולה ✓':'📐 תצוגה כפולה'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* כלים */}
+                <div className="card" style={{marginBottom:12}}>
+                  <div style={{fontSize:14,fontWeight:800,marginBottom:10}}>🔧 כלים</div>
+                  <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>{setGlobalSearch(true);setSearchQ('');setTimeout(()=>searchRef.current?.focus(),100);}}>
+                      🔍 חיפוש (Ctrl+K)
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={exportPDF}>
+                      🖨️ הדפסה / PDF
+                    </button>
+                  </div>
+                </div>
+
+                {/* סנכרון */}
+                <div className="card" style={{marginBottom:12}}>
+                  <div style={{fontSize:14,fontWeight:800,marginBottom:10}}>🔄 סנכרון</div>
+                  <div style={{padding:'10px 14px',borderRadius:8,marginBottom:10,
+                    background:syncStatus==='connected'?'rgba(34,197,94,.08)':'rgba(99,102,241,.06)',
+                    border:`1px solid ${syncStatus==='connected'?'rgba(34,197,94,.3)':'var(--border)'}`}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <div style={{width:10,height:10,borderRadius:'50%',
+                        background:syncStatus==='connected'?'var(--green)':'var(--text3)'}}/>
+                      <span style={{fontWeight:700,fontSize:13}}>
+                        {syncStatus==='connected'?`מסונכרן — חדר "${syncRoom}"`:'לא מחובר'}
+                      </span>
+                    </div>
+                  </div>
+                  {FIREBASE_CONFIG.apiKey&&(
+                    <div style={{display:'flex',gap:8,marginBottom:10}}>
+                      <input value={syncRoom} onChange={e=>setSyncRoom(e.target.value)}
+                        placeholder="שם חדר" style={{fontSize:13,padding:'8px 12px',flex:1}}/>
+                      {syncStatus!=='connected'&&syncStatus!=='cleaning'?(
+                        <button className="btn btn-primary btn-sm" onClick={()=>activateSync(syncRoom)} disabled={!syncRoom.trim()}>חבר</button>
+                      ):(
+                        <div style={{display:'flex',gap:6}}>
+                          <button className="btn btn-danger btn-sm" onClick={disconnectSync}>נתק</button>
+                          <button className="btn btn-ghost btn-sm" onClick={cleanFirebase} disabled={syncStatus==='cleaning'} style={{fontSize:11}}>
+                            {syncStatus==='cleaning'?'⏳':'🧹 נקה'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* נתונים */}
+                <div className="card" style={{marginBottom:12}}>
+                  <div style={{fontSize:14,fontWeight:800,marginBottom:10}}>💾 נתונים</div>
+                  <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:10}}>
+                    <button className="btn btn-primary btn-sm" onClick={exportAllData}>📤 ייצוא</button>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>fileInputRef.current?.click()}>📥 ייבוא</button>
+                    <input ref={fileInputRef} type="file" accept=".json" style={{display:'none'}}
+                      onChange={e=>{if(e.target.files[0])importAllData(e.target.files[0]);}}/>
+                    <button className="btn btn-ghost btn-sm"
+                      onClick={async()=>{
+                        if(!_firebaseDB||!_syncRoom){alert('צריך חיבור Firebase');return;}
+                        try{
+                          const snap=await _firebaseDB.ref(`backups/${_syncRoom}`).orderByKey().limitToLast(7).once('value');
+                          const data=snap.val();
+                          if(!data){alert('אין גיבויים');return;}
+                          const dates=Object.keys(data).sort().reverse();
+                          const options=[];
+                          dates.forEach(date=>{Object.keys(data[date]).sort().reverse().forEach(hour=>{
+                            options.push(`${date} ${hour}:00 (${Object.keys(data[date][hour]).length} סוגים)`);
+                          });});
+                          const choice=prompt('בחר גיבוי:\\n'+options.map((o,i)=>`${i+1}. ${o}`).join('\\n')+'\\nהקלד מספר:');
+                          if(!choice)return;const idx=parseInt(choice)-1;
+                          if(isNaN(idx)||idx<0||idx>=options.length){alert('לא תקין');return;}
+                          let ci=0;
+                          for(const date of dates){for(const hour of Object.keys(data[date]).sort().reverse()){
+                            if(ci===idx){Object.entries(data[date][hour]).forEach(([key,val])=>{localStorage.setItem(key,val.data);});
+                              alert('✅ שוחזר. הדף יתרענן');location.reload();return;}ci++;}}
+                        }catch(e){alert('שגיאה: '+e.message);}
+                      }}>🔙 שחזור מגיבוי</button>
+                  </div>
+                  <div style={{fontSize:10,color:'var(--text3)'}}>
+                    גיבוי אוטומטי כל 10 דקות · ייצוא/ייבוא JSON · שחזור מ-Firebase
+                  </div>
+                </div>
+              </div>
+            )}
           {screen==='weekly'&&<WeeklyScheduleScreen key={weeklyKey} tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} history={history} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs} setScreen={setScreen}/>}
           {screen==='monthly'&&<MonthlyYearlyScreen tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} history={history} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs} setScreen={setScreen}/>}
         </div>
