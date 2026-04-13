@@ -2061,7 +2061,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
               }}>
               📥 ייבא
             </button>
-            <button className="btn btn-ghost btn-sm" onClick={()=>setShowTemplates(t=>!t)}>📐 תבנית</button>
+            <button className="btn btn-ghost btn-sm" onClick={()=>setShowTemplates(t=>!t)}>🗂️ תבניות</button>
             <button className="btn btn-ghost btn-sm" onClick={()=>{
               const rituals=buildSchedule(active,8*60,null,15,dow,viewingToday);
               const toAdd=rituals.filter(r=>!schedule.some(e=>e.name===r.name));
