@@ -4561,12 +4561,12 @@ function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,s
     <div className="fi">
       {/* header + nav */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-        <button className="btn btn-ghost btn-sm" onClick={()=>setWeekOffset(w=>w-1)}>← הקודם</button>
+        <button className="btn btn-ghost btn-sm" onClick={()=>setWeekOffset(w=>w-1)}>הקודם →</button>
         <div style={{textAlign:'center'}}>
           <div style={{fontSize:15,fontWeight:800}}>{weekLabel()}</div>
           <div style={{fontSize:11,color:'var(--text3)'}}>{days[0].date} — {days[6].date}</div>
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={()=>setWeekOffset(w=>w+1)}>הבא →</button>
+        <button className="btn btn-ghost btn-sm" onClick={()=>setWeekOffset(w=>w+1)}>← הבא</button>
       </div>
 
       {weekOffset!==0&&(
@@ -4871,9 +4871,9 @@ function MonthlyYearlyScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,se
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
           <button className="btn btn-ghost btn-sm" onClick={()=>setView('month')}>← חודשי</button>
           <div style={{display:'flex',alignItems:'center',gap:12}}>
-            <button className="btn btn-ghost btn-sm" onClick={()=>setMonthOffset(o=>o-12)}>←</button>
+            <button className="btn btn-ghost btn-sm" onClick={()=>setMonthOffset(o=>o-12)}>→</button>
             <span style={{fontSize:18,fontWeight:900}}>{viewYear}</span>
-            <button className="btn btn-ghost btn-sm" onClick={()=>setMonthOffset(o=>o+12)}>→</button>
+            <button className="btn btn-ghost btn-sm" onClick={()=>setMonthOffset(o=>o+12)}>←</button>
           </div>
           <div/>
         </div>
@@ -4924,12 +4924,12 @@ function MonthlyYearlyScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,se
   return(
     <div className="fi">
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-        <button className="btn btn-ghost btn-sm" onClick={()=>setMonthOffset(o=>o-1)}>← הקודם</button>
+        <button className="btn btn-ghost btn-sm" onClick={()=>setMonthOffset(o=>o-1)}>הקודם →</button>
         <div style={{textAlign:'center'}}>
           <div style={{fontSize:18,fontWeight:900}}>{MNAMES[viewMonth]} {viewYear}</div>
           {monthOffset!==0&&<button onClick={()=>setMonthOffset(0)} style={{background:'none',border:'none',color:'var(--accent2)',cursor:'pointer',fontSize:11,fontFamily:'inherit'}}>חזור להיום</button>}
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={()=>setMonthOffset(o=>o+1)}>הבא →</button>
+        <button className="btn btn-ghost btn-sm" onClick={()=>setMonthOffset(o=>o+1)}>← הבא</button>
       </div>
 
       <div style={{display:'flex',gap:6,marginBottom:10}}>
