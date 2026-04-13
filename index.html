@@ -38,9 +38,9 @@ function gcalAuth(){
   });
 }
 
-async function gcalCreateEvent(token,summary,startMin,endMin,description,location,color,reminders){
-  const now=new Date();
-  const y=now.getFullYear(),mo=now.getMonth(),d=now.getDate();
+async function gcalCreateEvent(token,summary,startMin,endMin,description,location,color,reminders,dateObj){
+  const base=dateObj||new Date();
+  const y=base.getFullYear(),mo=base.getMonth(),d=base.getDate();
   const startDate=new Date(y,mo,d,Math.floor(startMin/60),startMin%60);
   const endDate=new Date(y,mo,d,Math.floor(endMin/60),endMin%60);
   const event={
@@ -159,17 +159,15 @@ async function gcalImportEvents(token,existingSchedule){
 }
 
 // Delete all Tavors events from today before re-syncing
-async function gcalDeleteTodayEvents(token){
-  const now=new Date();
-  const dayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate(),0,0,0).toISOString();
-  const dayEnd=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59).toISOString();
-  // Fetch today's events
+async function gcalDeleteDayEvents(token,dateObj){
+  const base=dateObj||new Date();
+  const dayStart=new Date(base.getFullYear(),base.getMonth(),base.getDate(),0,0,0).toISOString();
+  const dayEnd=new Date(base.getFullYear(),base.getMonth(),base.getDate(),23,59,59).toISOString();
   const resp=await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${dayStart}&timeMax=${dayEnd}&maxResults=100&singleEvents=true`,{
     headers:{'Authorization':'Bearer '+token}
   });
   const data=await resp.json();
   if(!data.items)return 0;
-  // Delete only events created by our app (have [A]/[B]/[C] prefix or known names)
   const tavorsMarkers=['[A]','[B]','[C]','[D]','[E]','🧘','🍳','☕','🦵','🐕','📱','💙','🗒️','⚖️','📚','🇬🇧'];
   const toDelete=data.items.filter(ev=>tavorsMarkers.some(m=>ev.summary&&ev.summary.includes(m)));
   let deleted=0;
@@ -181,6 +179,41 @@ async function gcalDeleteTodayEvents(token){
     deleted++;
   }
   return deleted;
+}
+async function gcalDeleteTodayEvents(token){return gcalDeleteDayEvents(token,new Date());}
+
+async function gcalSyncWeeklyPlan(weeklyPlan,days,tasks){
+  try{
+    const token=await gcalAuth();
+    let totalCount=0;
+    for(const day of days){
+      const entries=weeklyPlan[day.dateKey]||[];
+      if(!entries.length)continue;
+      const dateObj=new Date(day.dateKey+'T00:00:00');
+      await gcalDeleteDayEvents(token,dateObj);
+      for(const e of entries){
+        if(e.isBreak)continue;
+        const t=e.task||tasks.find(x=>x.id===e.taskId)||null;
+        const startMin=e.startTime!=null?e.startTime:(e.time?parseInt(e.time.split(':')[0])*60+parseInt(e.time.split(':')[1]||0):9*60);
+        const dur=e.endTime!=null?e.endTime-startMin:(t?30:30);
+        const endMin=e.endTime!=null?e.endTime:startMin+dur;
+        const rating=t?`[${t.rating}] `:'';
+        const desc=[
+          t?.dominoEffect?'🎯 '+t.dominoEffect:'',
+          t?.consequences?'⚠️ '+t.consequences:'',
+          e.note?'📝 '+e.note:'',
+        ].filter(Boolean).join('\n');
+        const color=t?.rating==='A'?'11':t?.rating==='B'?'6':undefined;
+        const reminders=[{method:'popup',minutes:1440},{method:'popup',minutes:60},{method:'popup',minutes:10}];
+        await gcalCreateEvent(token,rating+(e.name||t?.name||'משימה'),startMin,endMin,desc||undefined,undefined,color,reminders,dateObj);
+        totalCount++;
+      }
+    }
+    return totalCount;
+  }catch(e){
+    console.error('GCal weekly sync error:',e);
+    throw e;
+  }
 }
 
 async function gcalSyncSchedule(schedule,tasks){
@@ -1477,6 +1510,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
   const [panelSearch,setPanelSearch]=useState('');
   const [panelRating,setPanelRating]=useState('');
   const gridRef=useRef(null);
+  const scrollContainerRef=useRef(null);
   // Snap guide + pulse
   const [snapGuideMin,setSnapGuideMin]=useState(null);
   const [snapPulseId,setSnapPulseId]=useState(null);
@@ -1491,6 +1525,24 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
     const t=setTimeout(()=>setUndoFlash(false),700);
     return()=>clearTimeout(t);
   },[undoFlashTs]);
+  // Auto-scroll to current time when schedule view opens
+  const didAutoScroll=useRef(false);
+  useEffect(()=>{
+    if(didAutoScroll.current)return;
+    if(!scrollContainerRef.current)return;
+    didAutoScroll.current=true;
+    requestAnimationFrame(()=>{
+      const el=scrollContainerRef.current;
+      if(!el)return;
+      const nowMin=new Date().getHours()*60+new Date().getMinutes();
+      const dsLocal=liveSchedule||schedule;
+      const dsRaw=dsLocal.length?Math.floor((Math.min(...dsLocal.map(i=>i.startTime))-30)/60)*60:420;
+      const dsStart=Math.min(dsRaw,420);
+      const nowPx=(nowMin-dsStart)*PX;
+      const viewH=el.clientHeight;
+      el.scrollTop=Math.max(0,nowPx-viewH/2);
+    });
+  });
   const [dragOverPinned,setDragOverPinned]=useState(false);
   const dragOverPinnedRef=useRef(false); // ref version for use inside useEffect closure
   const [dragOverGreen,setDragOverGreen]=useState(false);
@@ -2310,7 +2362,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
       </div>{/* ═══ END STICKY TOP BAR ═══ */}
 
       {/* ═══ SCROLLABLE CONTENT ═══ */}
-      <div style={{flex:1,minHeight:0,overflowY:'auto',overflowX:'hidden',WebkitOverflowScrolling:'touch'}}>
+      <div ref={scrollContainerRef} style={{flex:1,minHeight:0,overflowY:'auto',overflowX:'hidden',WebkitOverflowScrolling:'touch'}}>
 
       {/* ── Balance gauge ── */}
       {balTotal>0&&(
@@ -4696,6 +4748,9 @@ function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,s
   const [addModal,setAddModal]=useState(null);
   const [editEntry,setEditEntry]=useState(null);
   const [expandDay,setExpandDay]=useState(null);
+  // GCal sync state
+  const [gcalSyncing,setGcalSyncing]=useState(false);
+  const [gcalMsg,setGcalMsg]=useState('');
   // Cross-day drag state
   const weekDrag=useRef(null); // {entryId, fromDateKey}
   const [dragOverDay,setDragOverDay]=useState(null); // dateKey being hovered
@@ -4923,7 +4978,20 @@ function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,s
         </div>
       </div>
 
-      <div style={{display:'flex',justifyContent:'flex-end',marginBottom:10}}>
+      <div style={{display:'flex',justifyContent:'flex-end',gap:6,marginBottom:10}}>
+        <button className="btn btn-ghost btn-sm" disabled={gcalSyncing}
+          onClick={async()=>{
+            setGcalSyncing(true);setGcalMsg('');
+            try{
+              const count=await gcalSyncWeeklyPlan(weeklyPlan,days,tasks);
+              setGcalMsg(`✅ ${count} אירועים`);setTimeout(()=>setGcalMsg(''),4000);
+              if(navigator.vibrate)navigator.vibrate([100,50,100]);
+            }catch(e){console.error('GCal weekly:',e);_gcalToken=null;setGcalMsg('❌ שגיאה');setTimeout(()=>setGcalMsg(''),4000);}
+            setGcalSyncing(false);
+          }}
+          style={gcalMsg.startsWith('✅')?{border:'1px solid var(--green)',color:'var(--green)',background:'rgba(34,197,94,.1)'}:{}}>
+          {gcalSyncing?'⏳':gcalMsg||'📆 שלח לקלנדר'}
+        </button>
         <button className="btn btn-primary btn-sm" onClick={suggest}>✨ הצע חלוקה</button>
       </div>
 
@@ -5091,6 +5159,48 @@ function WeeklyAddModal({tasks,initial,onSave,onClose}){
 
 // ── SCREEN: MONTHLY + YEARLY CALENDAR ─────────────────────────────────
 
+function MonthGcalSendButton({weeklyPlan,tasks,viewYear,viewMonth}){
+  const [syncing,setSyncing]=useState(false);
+  const [msg,setMsg]=useState('');
+  async function send(){
+    setSyncing(true);setMsg('');
+    try{
+      const token=await gcalAuth();
+      const daysInMonth=new Date(viewYear,viewMonth+1,0).getDate();
+      let totalCount=0;
+      for(let d=1;d<=daysInMonth;d++){
+        const dk=`${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const entries=weeklyPlan[dk]||[];
+        if(!entries.length)continue;
+        const dateObj=new Date(viewYear,viewMonth,d);
+        await gcalDeleteDayEvents(token,dateObj);
+        for(const e of entries){
+          if(e.isBreak)continue;
+          const t=e.task||tasks.find(x=>x.id===e.taskId)||null;
+          const startMin=e.startTime!=null?e.startTime:(e.time?parseInt(e.time.split(':')[0])*60+parseInt(e.time.split(':')[1]||0):9*60);
+          const endMin=e.endTime!=null?e.endTime:startMin+30;
+          const rating=t?`[${t.rating}] `:'';
+          const desc=[t?.dominoEffect?'🎯 '+t.dominoEffect:'',t?.consequences?'⚠️ '+t.consequences:'',e.note?'📝 '+e.note:''].filter(Boolean).join('\n');
+          const color=t?.rating==='A'?'11':t?.rating==='B'?'6':undefined;
+          const reminders=[{method:'popup',minutes:1440},{method:'popup',minutes:60},{method:'popup',minutes:10}];
+          await gcalCreateEvent(token,rating+(e.name||t?.name||'משימה'),startMin,endMin,desc||undefined,undefined,color,reminders,dateObj);
+          totalCount++;
+        }
+      }
+      setMsg(`✅ ${totalCount} אירועים`);setTimeout(()=>setMsg(''),4000);
+      if(navigator.vibrate)navigator.vibrate([100,50,100]);
+    }catch(e){console.error('GCal monthly:',e);_gcalToken=null;setMsg('❌ שגיאה');setTimeout(()=>setMsg(''),4000);}
+    setSyncing(false);
+  }
+  return(
+    <button className="btn btn-ghost btn-sm" disabled={syncing}
+      onClick={send}
+      style={msg.startsWith('✅')?{border:'1px solid var(--green)',color:'var(--green)',background:'rgba(34,197,94,.1)'}:{}}>
+      {syncing?'⏳':msg||'📆 שלח חודש לקלנדר'}
+    </button>
+  );
+}
+
 function MonthlyYearlyScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,setHistory,parkedItems,setParkedItems,undoFlashTs,setScreen}){
   const [view,setView]=useState('month'); // 'month' or 'year'
   const [expandDay,setExpandDay]=useState(null);
@@ -5243,6 +5353,7 @@ function MonthlyYearlyScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,se
 
       <div style={{display:'flex',gap:6,marginBottom:10}}>
         <button className="btn btn-ghost btn-sm" onClick={()=>setView('year')}>📅 תצוגה שנתית</button>
+        <MonthGcalSendButton weeklyPlan={weeklyPlan} tasks={tasks} viewYear={viewYear} viewMonth={viewMonth}/>
       </div>
 
       {/* Day headers */}
