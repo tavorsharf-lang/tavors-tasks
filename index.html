@@ -321,6 +321,13 @@ body.time-morning{--bg:#FFF9F0;--bg2:#FFF3E0;--bg3:#FFE8CC;--card:#FFFFFF;--bord
 body.time-afternoon{--bg:#FAF6F1;--bg2:#F3EDE4;--bg3:#E8DFD5;--card:#FFFFFF;--border:#DDD4C8}
 body.time-evening{--bg:#F0EBE3;--bg2:#E8E0D4;--bg3:#D8CFC2;--card:#F8F4EF;--border:#CFC5B8}
 body.time-night{--bg:#E5DDD3;--bg2:#D8CFBF;--bg3:#C8BFB0;--card:#F0EBE3;--border:#BFB5A5}
+/* Dark mode */
+body.dark-mode{
+  --bg:#1E293B;--bg2:#293548;--bg3:#334155;
+  --card:#2D3A4E;--card-hover:#374863;--border:#3E4E66;
+  --text:#F1F5F9;--text2:#94A3B8;--text3:#64748B;
+  --accent:#F59E0B;--accent2:#FBBF24;
+}
 /* Declutter mode */
 body.declutter-mode .action-btn,body.declutter-mode .postpone-menu,body.declutter-mode .drag-handle{display:none!important}
 body.declutter-mode [data-declutter-hide]{display:none!important}
@@ -5049,7 +5056,7 @@ function App(){
   },[isDarkMode,autoTheme]);
 
   useEffect(()=>{
-    document.body.classList.toggle('light-mode',!isDarkMode);
+    document.body.classList.toggle('dark-mode',isDarkMode);
   },[isDarkMode]);
 
   // Feature 12: declutter
@@ -5162,14 +5169,12 @@ function App(){
             title={declutterMode?'צא ממצב ניקוי':'מצב ניקוי — הסתר כפתורים'}>
             {declutterMode?'👁️':'🧹'}
           </button>
-          {/* Auto-theme toggle */}
-          <button onClick={()=>setAutoTheme(m=>!m)}
-            style={{background:autoTheme?'rgba(99,102,241,.15)':'transparent',
-              border:`1px solid ${autoTheme?'var(--accent)':'var(--border)'}`,borderRadius:8,
-              padding:'4px 9px',cursor:'pointer',fontSize:12,lineHeight:1,transition:'.2s',
-              color:autoTheme?'var(--accent2)':'var(--text3)',fontFamily:'inherit',fontWeight:600}}
-            title={autoTheme?'כבה ערכת נושא אוטומטית':'הפעל ערכת נושא לפי שעה'}>
-            🌗
+          {/* Dark mode toggle */}
+          <button onClick={()=>setIsDarkMode(m=>!m)}
+            style={{background:'transparent',border:'1px solid var(--border)',borderRadius:8,
+              padding:'4px 9px',cursor:'pointer',fontSize:15,lineHeight:1,transition:'.2s'}}
+            title={isDarkMode?'מצב בהיר':'מצב כהה'}>
+            {isDarkMode?'☀️':'🌙'}
           </button>
           {/* PDF export */}
           <button onClick={exportPDF} data-declutter-hide
