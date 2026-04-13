@@ -2747,10 +2747,11 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                 {/* Background item: simple centered label */}
                 {isBgItem&&(
                   <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',
-                    alignItems:'center',justifyContent:'center',pointerEvents:'none',gap:2}}>
+                    alignItems:'center',justifyContent:'center',gap:2,cursor:'pointer',pointerEvents:'auto'}}
+                    onClick={e=>{e.stopPropagation();setEditItem(item);}}>
                     <div style={{fontSize:16,fontWeight:800,color:'rgba(99,102,241,.45)',letterSpacing:1}}>{item.name}</div>
                     <div style={{fontSize:10,color:'rgba(99,102,241,.35)',fontWeight:600}}>
-                      {fmtMin(item.startTime)}–{fmtMin(item.endTime)} · משימת רקע
+                      {fmtMin(item.startTime)}–{fmtMin(item.endTime)} · משימת רקע · לחץ לעריכה
                     </div>
                   </div>
                 )}
