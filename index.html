@@ -1365,7 +1365,7 @@ const MOTIVATION_QUOTES=[
   'בסוף היום, השאלה היא לא ״האם הייתי עסוק״ — אלא ״האם התקדמתי״.',
 ];
 
-function DashboardScreen({tasks,setScreen,schedule}){
+function DashboardScreen({tasks,setScreen,schedule,setSchedule}){
   const [now,setNow]=useState(()=>new Date());
   useEffect(()=>{
     const t=setInterval(()=>setNow(new Date()),60000);
@@ -1562,6 +1562,29 @@ function DashboardScreen({tasks,setScreen,schedule}){
         </div>
       )}
 
+      {/* Quick add from dashboard */}
+      {schedule.length>0&&setSchedule&&(
+        <div style={{marginTop:8}}>
+          <input
+            style={{width:'100%',fontSize:13,padding:'10px 14px',borderRadius:10,border:'1px solid var(--border)',background:'var(--bg2)',color:'var(--text)',fontFamily:'Heebo,sans-serif'}}
+            placeholder="⚡ הוסף מהיר: 'ריאיון 10:00 שעה' ← Enter"
+            onKeyDown={e=>{
+              if(e.key!=='Enter'||!e.target.value.trim())return;
+              const v=e.target.value;
+              const tm=v.match(/(\d{1,2}):(\d{2})/);
+              const stm=tm?parseInt(tm[1])*60+parseInt(tm[2]):(schedule.length?schedule[schedule.length-1].endTime:9*60);
+              let dur=30;
+              if(v.includes('שעה וחצי'))dur=90;
+              else if(v.includes('שעתיים'))dur=120;
+              else if(v.includes('שעה'))dur=60;
+              else{const dm=v.match(/(\d+)\s*דקות?/);if(dm)dur=parseInt(dm[1]);}
+              const nm=v.replace(/\d{1,2}:\d{2}/,'').replace(/\d+\s*דקות?/g,'').replace(/שעה[^ ]*/g,'').replace(/שעתיים/g,'').trim()||v;
+              setSchedule(p=>[...p,{id:uid(),taskId:null,name:nm,startTime:stm,endTime:stm+dur,done:false,isBreak:false,isFixed:false,layerNote:null,task:null,note:''}].sort((a,b)=>a.startTime-b.startTime));
+              e.target.value='';
+            }}/>
+        </div>
+      )}
+
       <button className="big-cta" onClick={()=>setScreen('schedule')}>
         {schedule.length>0?'📋 ללוז היומי':'בוא נתחיל את היום! 🚀'}
       </button>
@@ -1663,6 +1686,8 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
   const [showPressure,setShowPressure]=useState(false);
   // Collapsible menu
   const [showMenu,setShowMenu]=useState(true);
+  const [isMobile]=useState(()=>window.innerWidth<640);
+  const [moreMenuOpen,setMoreMenuOpen]=useState(false);
   // Pinch-to-zoom for schedule grid
   const [zoomLevel,setZoomLevel]=useState(PX_DEFAULT);
   const pinchRef=useRef(null); // {startDist, startZoom}
@@ -2297,14 +2322,16 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
         <div style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:10,padding:'10px',marginBottom:6,
           boxShadow:'0 4px 16px rgba(0,0,0,.08)'}}>
 
-          {/* Row 1: Actions */}
-          <div style={{display:'flex',gap:5,marginBottom:8,flexWrap:'wrap'}}>
+          {/* Essential row: always visible */}
+          <div style={{display:'flex',gap:5,marginBottom:8,flexWrap:'wrap',alignItems:'center'}}>
             <button className="btn btn-ghost btn-sm" onClick={()=>{copySchedule();setShowMenu(false);}}>{copyMsg||'📋 העתק'}</button>
-            <button className="btn btn-ghost btn-sm"
-              onClick={notifEnabled?disableNotif:enableNotif}
-              style={notifEnabled?{border:'1px solid var(--green)',color:'var(--green)',background:'rgba(34,197,94,.1)'}:{}}>
-              {notifEnabled?'🔔':'🔕'}
-            </button>
+            <div style={{display:'flex',alignItems:'center',gap:2,border:'1px solid var(--border)',borderRadius:7,padding:'2px 4px'}}>
+              <button onClick={()=>setZoomLevel(z=>Math.max(1.2,Math.round((z-0.3)*10)/10))}
+                style={{background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize:13,fontFamily:'inherit',padding:'2px 5px',fontWeight:700}}>−</button>
+              <span style={{fontSize:10,color:'var(--text3)',minWidth:28,textAlign:'center'}}>{zoomLevel}x</span>
+              <button onClick={()=>setZoomLevel(z=>Math.min(6,Math.round((z+0.3)*10)/10))}
+                style={{background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize:13,fontFamily:'inherit',padding:'2px 5px',fontWeight:700}}>+</button>
+            </div>
             <button className="btn btn-ghost btn-sm" disabled={gcalSyncing}
               onClick={async()=>{
                 setGcalSyncing(true);setGcalMsg('');
@@ -2317,6 +2344,22 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
               }}
               style={gcalMsg.startsWith('✅')?{border:'1px solid var(--green)',color:'var(--green)',background:'rgba(34,197,94,.1)'}:{}}>
               {gcalSyncing?'⏳':gcalMsg||'📆 שלח'}
+            </button>
+            {isMobile?(
+              <button className="btn btn-ghost btn-sm" onClick={()=>setMoreMenuOpen(m=>!m)}
+                style={moreMenuOpen?{border:'1px solid var(--accent)',color:'var(--accent)',background:'rgba(99,102,241,.1)'}:{}}>
+                {moreMenuOpen?'✕ סגור':'⋯ עוד'}
+              </button>
+            ):null}
+          </div>
+
+          {/* Extended controls: always on desktop, behind "more" on mobile */}
+          {(!isMobile||moreMenuOpen)&&<>
+          <div style={{display:'flex',gap:5,marginBottom:8,flexWrap:'wrap'}}>
+            <button className="btn btn-ghost btn-sm"
+              onClick={notifEnabled?disableNotif:enableNotif}
+              style={notifEnabled?{border:'1px solid var(--green)',color:'var(--green)',background:'rgba(34,197,94,.1)'}:{}}>
+              {notifEnabled?'🔔':'🔕'}
             </button>
             <button className="btn btn-ghost btn-sm"
               onClick={async()=>{
@@ -2345,16 +2388,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
               🚨 לחץ
             </button>
           </div>
-
-          {/* Row 2: Controls */}
           <div style={{display:'flex',gap:5,marginBottom:8,flexWrap:'wrap',alignItems:'center'}}>
-            <div style={{display:'flex',alignItems:'center',gap:2,border:'1px solid var(--border)',borderRadius:7,padding:'2px 4px'}}>
-              <button onClick={()=>setZoomLevel(z=>Math.max(1.2,Math.round((z-0.3)*10)/10))}
-                style={{background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize:13,fontFamily:'inherit',padding:'2px 5px',fontWeight:700}}>−</button>
-              <span style={{fontSize:10,color:'var(--text3)',minWidth:28,textAlign:'center'}}>{zoomLevel}x</span>
-              <button onClick={()=>setZoomLevel(z=>Math.min(6,Math.round((z+0.3)*10)/10))}
-                style={{background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize:13,fontFamily:'inherit',padding:'2px 5px',fontWeight:700}}>+</button>
-            </div>
             <button onClick={()=>setMagnetMode(m=>!m)}
               style={{display:'flex',alignItems:'center',gap:4,padding:'4px 9px',borderRadius:7,
                 border:`1px solid ${magnetMode?'var(--accent)':'var(--border)'}`,
@@ -2397,7 +2431,6 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                 color:showSidePanel?'var(--green)':'var(--text3)'}}>
               📦 {showSidePanel?'סגור':'מאגר'}
             </button>
-            {/* Push later (down) */}
             {[15,30].map(d=>(
               <button key={'d'+d} onClick={()=>setSchedule(prev=>prev.map(it=>(!it.isPinned)?{...it,startTime:it.startTime+d,endTime:it.endTime+d}:it))}
                 style={{padding:'4px 9px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',
@@ -2405,7 +2438,6 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                 ↓ {d}′
               </button>
             ))}
-            {/* Push earlier (up) */}
             {[15,30].map(d=>(
               <button key={'u'+d} onClick={()=>setSchedule(prev=>prev.map(it=>(!it.isPinned&&it.startTime-d>=0)?{...it,startTime:it.startTime-d,endTime:it.endTime-d}:it))}
                 style={{padding:'4px 9px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',
@@ -2414,6 +2446,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
               </button>
             ))}
           </div>
+          </>}
 
           {/* Quick add */}
           <div style={{display:'flex',gap:6}}>
@@ -3785,6 +3818,7 @@ function TaskRepositoryScreen({tasks,setTasks,history}){
   const [fDmg,setFDmg]=useState('');
   const [fQ,setFQ]=useState('');
   const [compact,setCompact]=useState(false);
+  const [cardView,setCardView]=useState(()=>window.innerWidth<640);
   const [editT,setEditT]=useState(null);
   const [showAdd,setShowAdd]=useState(false);
 
@@ -3845,7 +3879,8 @@ function TaskRepositoryScreen({tasks,setTasks,history}){
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
         <h2 className="section-title" style={{margin:0}}>📦 מאגר ({tasks.length})</h2>
         <div style={{display:'flex',gap:5}}>
-          <button className="btn btn-ghost btn-sm" onClick={()=>setCompact(c=>!c)}>{compact?'📊 מורחב':'📋 מקוצר'}</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setCardView(c=>!c)}>{cardView?'📊 טבלה':'🃏 כרטיסים'}</button>
+          {!cardView&&<button className="btn btn-ghost btn-sm" onClick={()=>setCompact(c=>!c)}>{compact?'📊 מורחב':'📋 מקוצר'}</button>}
           <button className="btn btn-primary btn-sm" onClick={()=>setShowAdd(true)}>+ הוסף</button>
         </div>
       </div>
@@ -3874,7 +3909,38 @@ function TaskRepositoryScreen({tasks,setTasks,history}){
         {(q||fR||fD||fDmg||fQ)&&<button className="btn btn-ghost btn-sm" onClick={()=>{setQ('');setFR('');setFD('');setFDmg('');setFQ('');}}>✕</button>}
       </div>
 
-      <div className="table-wrapper">
+      {/* Card view */}
+      {cardView&&(
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:10}}>
+          {rows.map(t=>{
+            const d=daysLeft(t.deadline);
+            return(
+              <div key={t.id} className="card" style={{padding:12,cursor:'pointer'}} onClick={()=>setEditT(t)}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                  <span style={{fontSize:14,fontWeight:700,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.name}</span>
+                  <RBadge rating={t.rating}/>
+                </div>
+                <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',fontSize:11,color:'var(--text2)',marginBottom:6}}>
+                  <DDot type={t.damageType}/><span>{DL[t.damageType]}</span>
+                  <span>{domainEmoji(t.domain)} {t.domain}</span>
+                </div>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span style={{fontWeight:700,color:'var(--accent2)',fontSize:13}}>ציון: {t.matrixScore}</span>
+                  {t.deadline&&t.deadline!=='weekly-thursday'&&(
+                    <span style={{fontSize:11,fontWeight:600,color:d!==null?dlColor(d):'var(--text3)'}}>
+                      📅 {d!==null?`${d} ימים`:''}
+                    </span>
+                  )}
+                  <LastDoneBadge history={history} taskId={t.id} taskName={t.name}/>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Table view */}
+      {!cardView&&<div className="table-wrapper">
         <table className="task-table">
           <thead>
             <tr>
@@ -3933,7 +3999,7 @@ function TaskRepositoryScreen({tasks,setTasks,history}){
             })}
           </tbody>
         </table>
-      </div>
+      </div>}
 
       {(editT||showAdd)&&(
         <TaskEditModal task={editT} onSave={save} onClose={()=>{setEditT(null);setShowAdd(false);}}/>
@@ -5746,6 +5812,16 @@ function App(){
   function setWeeklyPlan(v,label='עריכת לוז שבועי'){pushUndo(label);setWeeklyPlanRaw(v);}
   function setParkedItems(v,label='עדכון חניון'){pushUndo(label);setParkedItemsRaw(v);}
 
+  // Parked items review
+  const [showParkedReview,setShowParkedReview]=useState(false);
+  const staleParked=parkedItems.filter(pi=>pi.parkedAt&&Math.floor((Date.now()-pi.parkedAt)/86400000)>=7);
+  useEffect(()=>{
+    if(!staleParked.length)return;
+    const last=localStorage.getItem('tavors_parked_review_date');
+    const daysSince=last?Math.floor((Date.now()-new Date(last).getTime())/86400000):999;
+    if(daysSince>=7)setShowParkedReview(true);
+  },[]);
+
   const [today,setToday]=useState(()=>new Date());
   useEffect(()=>{const iv=setInterval(()=>setToday(new Date()),60000);return()=>clearInterval(iv);},[]);
   const urgentCount=tasks.filter(t=>t.deadline&&t.deadline!=='weekly-thursday'&&daysLeft(t.deadline)<=3).length;
@@ -6113,7 +6189,7 @@ function App(){
             <WeeklyScheduleScreen key={weeklyKey+1000} tasks={tasks} setTasks={setTasks} weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} history={history} setHistory={setHistory} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs} setScreen={setScreen}/>
           </div>
           <div className="dual-right">
-            {screen==='dashboard'&&<DashboardScreen tasks={tasks} setScreen={setScreen} schedule={schedule}/>}
+            {screen==='dashboard'&&<DashboardScreen tasks={tasks} setScreen={setScreen} schedule={schedule} setSchedule={setSchedule}/>}
             {screen==='schedule'&&<DailyScheduleScreen tasks={tasks} setTasks={setTasks} schedule={schedule} setSchedule={setSchedule} history={history} setHistory={setHistory} setWeeklyPlan={setWeeklyPlan} weeklyPlan={weeklyPlan} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>}
             {screen==='pressure'&&<PressureModeScreen tasks={tasks} setScreen={setScreen}/>}
             {screen==='tasks'&&<TaskRepositoryScreen tasks={tasks} setTasks={setTasks} history={history}/>}
@@ -6124,7 +6200,7 @@ function App(){
         </div>
       ):(
         <div className="main-content">
-          {screen==='dashboard'&&<DashboardScreen tasks={tasks} setScreen={setScreen} schedule={schedule}/>}
+          {screen==='dashboard'&&<DashboardScreen tasks={tasks} setScreen={setScreen} schedule={schedule} setSchedule={setSchedule}/>}
           {screen==='schedule'&&<DailyScheduleScreen tasks={tasks} setTasks={setTasks} schedule={schedule} setSchedule={setSchedule} history={history} setHistory={setHistory} setWeeklyPlan={setWeeklyPlan} weeklyPlan={weeklyPlan} parkedItems={parkedItems} setParkedItems={setParkedItems} undoFlashTs={undoFlashTs}/>}
           {screen==='pressure'&&<PressureModeScreen tasks={tasks} setScreen={setScreen}/>}
           {screen==='tasks'&&<TaskRepositoryScreen tasks={tasks} setTasks={setTasks} history={history}/>}
@@ -6134,11 +6210,61 @@ function App(){
         </div>
       )}
 
+      {/* Parked items weekly review */}
+      {showParkedReview&&staleParked.length>0&&(
+        <div className="modal-overlay" style={{zIndex:500}} onClick={()=>{}}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:17,fontWeight:800,marginBottom:12}}>🅿️ סקירת חניון שבועית</div>
+            <div style={{fontSize:12,color:'var(--text2)',marginBottom:14,lineHeight:1.6}}>
+              {staleParked.length} משימות חונות כבר שבוע או יותר. רוצה להחזיר משהו ללוז?
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:8,maxHeight:'50vh',overflowY:'auto',marginBottom:14}}>
+              {staleParked.map(pi=>{
+                const days=Math.floor((Date.now()-pi.parkedAt)/86400000);
+                return(
+                  <div key={pi.id} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 10px',
+                    background:'var(--bg2)',borderRadius:8,border:'1px solid var(--border)'}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,fontWeight:600}}>{pi.name}</div>
+                      <div style={{fontSize:10,color:'var(--text3)'}}>חונה {days} ימים</div>
+                    </div>
+                    <button className="btn btn-ghost btn-sm" style={{fontSize:11}} onClick={()=>{
+                      const st=schedule.length?Math.max(...schedule.map(i=>i.endTime)):9*60;
+                      const dur=pi.duration||30;
+                      setSchedule(p=>[...p,{id:uid(),taskId:pi.taskId||null,name:pi.name,
+                        startTime:st,endTime:st+dur,done:false,isBreak:false,isFixed:false,
+                        layerNote:pi.layerNote||null,task:pi.task||null,note:pi.note||''}].sort((a,b)=>a.startTime-b.startTime));
+                      setParkedItems(p=>p.filter(x=>x.id!==pi.id));
+                    }}>ללוז</button>
+                    <button className="btn btn-ghost btn-sm" style={{fontSize:11,color:'var(--red)'}} onClick={()=>{
+                      setParkedItems(p=>p.filter(x=>x.id!==pi.id));
+                    }}>מחק</button>
+                  </div>
+                );
+              })}
+            </div>
+            <button className="btn btn-primary" style={{width:'100%'}} onClick={()=>{
+              localStorage.setItem('tavors_parked_review_date',new Date().toISOString().split('T')[0]);
+              setShowParkedReview(false);
+            }}>סיימתי סקירה</button>
+          </div>
+        </div>
+      )}
+
       <nav className="nav-bar" data-no-print>
         {NAV.map(item=>(
-          <button key={item.id} className={`nav-item${screen===item.id?' active':''}`} onClick={()=>setScreen(item.id)}>
+          <button key={item.id} className={`nav-item${screen===item.id?' active':''}`} onClick={()=>setScreen(item.id)}
+            style={{position:'relative'}}>
             <span style={{fontSize:18}}>{item.icon}</span>
             <span>{item.label}</span>
+            {item.id==='schedule'&&parkedItems.length>0&&(
+              <span style={{position:'absolute',top:2,right:'calc(50% - 18px)',
+                background:'#22C55E',color:'#fff',borderRadius:10,
+                padding:'1px 5px',fontSize:8,fontWeight:800,lineHeight:'13px',
+                minWidth:14,textAlign:'center'}}>
+                {parkedItems.length}
+              </span>
+            )}
           </button>
         ))}
       </nav>
