@@ -5080,6 +5080,7 @@ function App(){
   const [weeklyKey,setWeeklyKey]=useState(0);
   function setScreen(s){setScreenRaw(s);if(s==='weekly')setWeeklyKey(k=>k+1);}
   const [isDarkMode,setIsDarkMode]=useState(false);
+  const [headerQuote]=useState(()=>MOTIVATION_QUOTES[Math.floor(Math.random()*MOTIVATION_QUOTES.length)]);
   const [autoTheme,setAutoTheme]=useState(true); // feature 11
   const [declutterMode,setDeclutterMode]=useState(false); // feature 12
   const [showDailyCard,setShowDailyCard]=useState(false); // disabled
@@ -5216,7 +5217,10 @@ function App(){
     <div style={{display:'flex',flexDirection:'column',height:'100%',background:'var(--bg)',overflow:'hidden'}}>
       <div className="app-header">
         <div>
-          <div style={{fontSize:17,fontWeight:900}}>תבור 🎯</div>
+          <div style={{fontSize:12,fontWeight:700,fontStyle:'italic',color:'var(--accent)',maxWidth:220,lineHeight:1.4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}
+            title={headerQuote}>
+            "{headerQuote}"
+          </div>
           <div style={{fontSize:11,color:'var(--text3)'}}>{DAYS[today.getDay()]}, {today.getDate()} ב{MONTHS[today.getMonth()]} {today.getFullYear()}</div>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
