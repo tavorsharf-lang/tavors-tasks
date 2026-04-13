@@ -3191,6 +3191,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
 function ScheduleItemEditModal({item,onSave,onClose}){
   const dur=item.endTime-item.startTime;
   const t=item.task||null;
+  const [isBg,setIsBg]=useState(!!item.isBackground);
   const [form,setForm]=useState({
     name:item.name||'',
     st:fmtMin(item.startTime),
@@ -3228,7 +3229,8 @@ function ScheduleItemEditModal({item,onSave,onClose}){
     }:null;
     const result={...item,name:form.name,startTime:stm,endTime:stm+Number(form.durMin),
       note:form.note.trim()||undefined,task:updatedTask,
-      requiresTravel:form.requiresTravel,travelDuration:form.travelDuration||30};
+      requiresTravel:form.requiresTravel,travelDuration:form.travelDuration||30,
+      isBackground:isBg};
     onSave(result);
   }
 
@@ -3403,6 +3405,14 @@ function ScheduleItemEditModal({item,onSave,onClose}){
             </div>
           </div>
         </div>
+        <button type="button" onClick={()=>setIsBg(b=>!b)}
+          style={{width:'100%',marginTop:10,padding:'8px 12px',borderRadius:8,fontSize:12,fontWeight:600,
+            cursor:'pointer',fontFamily:'inherit',textAlign:'right',
+            border:`2px solid ${isBg?'rgba(99,102,241,.5)':'var(--border)'}`,
+            background:isBg?'rgba(99,102,241,.1)':'transparent',
+            color:isBg?'var(--accent)':'var(--text3)'}}>
+          {isBg?'🏢 משימת רקע (יום שלם) — ריטואלים ייכנסו בתוכה':'🏢 סמן כמשימת רקע (יום שלם)'}
+        </button>
         <div style={{display:'flex',gap:8,marginTop:14}}>
           <button className="btn btn-ghost" onClick={onClose}>ביטול</button>
           <button className="btn btn-primary" onClick={save} disabled={!form.name}>שמור</button>
