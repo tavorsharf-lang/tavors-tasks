@@ -4963,7 +4963,7 @@ function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,s
           id:e.id,taskId:e.taskId||null,name:e.name,
           startTime:tm,endTime:tm+dur,
           done:e.done||false,isBreak:e.isBreak||false,isFixed:e.isFixed||false,
-          isPinned:e.isPinned||false,
+          isPinned:e.isPinned||false,isBackground:e.isBackground||false,
           layerNote:e.layerNote||null,task:t,note:e.note||'',
           dependsOn:e.dependsOn||null,splitGroup:e.splitGroup||null,
         };
