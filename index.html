@@ -575,27 +575,15 @@ else window.addEventListener('load',tryAutoConnect);
 // ── DEDUP: clean up duplicate schedule/weekly items ──────────────────
 function dedupArray(arr){
   if(!Array.isArray(arr)||!arr.length)return arr;
-  // Pass 1: exact match (name+start+end)
-  const seen1=new Set();
-  let clean=arr.filter(it=>{
-    const sig=(it.name||'')+'|'+(it.startTime??it.time??'')+'|'+(it.endTime||'');
-    if(seen1.has(sig))return false;
-    seen1.add(sig);
+  // Same name on same day = keep only the first one
+  const seen=new Set();
+  return arr.filter(it=>{
+    const name=(it.name||'').trim();
+    if(!name)return true; // keep unnamed items
+    if(seen.has(name))return false;
+    seen.add(name);
     return true;
   });
-  // Pass 2: same name within 30min window → keep only the first occurrence
-  const seen2=new Map(); // name → startTime of first occurrence
-  clean=clean.filter(it=>{
-    const name=it.name||'';
-    const st=it.startTime??0;
-    if(seen2.has(name)){
-      const firstSt=seen2.get(name);
-      if(Math.abs(st-firstSt)<=30)return false; // duplicate within 30min
-    }
-    seen2.set(name,st);
-    return true;
-  });
-  return clean;
 }
 
 function dedup(key,data){
@@ -604,6 +592,8 @@ function dedup(key,data){
     if(clean.length<data.length){
       console.log(`🧹 Dedup ${key}: ${data.length} → ${clean.length} (removed ${data.length-clean.length} duplicates)`);
       try{localStorage.setItem(key,JSON.stringify(clean));}catch{}
+      // Push cleaned data to Firebase so other devices get it too
+      setTimeout(()=>{if(_syncReady&&_syncRoom)firebaseWrite(key,clean);},1000);
       return clean;
     }
   }
@@ -621,6 +611,7 @@ function dedup(key,data){
     }
     if(changed){
       try{localStorage.setItem(key,JSON.stringify(clean));}catch{}
+      setTimeout(()=>{if(_syncReady&&_syncRoom)firebaseWrite(key,clean);},1000);
       return clean;
     }
   }
