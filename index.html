@@ -1606,7 +1606,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
   const [wakeTime,setWakeTime]=useState(nowIsrael);
   const [mainId,setMainId]=useState(null);
   const [breakDur,setBreakDur]=useState(15);
-  const [energy,setEnergy]=useState(null);
+  // energy selector removed (was unused)
   const [showAdd,setShowAdd]=useState(false);
   const [postponeOpen,setPostponeOpen]=useState(null);
   const [copyMsg,setCopyMsg]=useState('');
@@ -1616,7 +1616,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
   // Grid drag state
   const [magnetMode,setMagnetMode]=useState(true);
   const [bufferMin,setBufferMin]=useState(5);
-  const [xrayMode,setXrayMode]=useState(false);
+  const xrayMode=false; // removed — was debug feature
   const [quickAdd,setQuickAdd]=useState('');
   const [draggingId,setDraggingId]=useState(null);
   const [liveSchedule,setLiveSchedule]=useState(null);
@@ -1670,8 +1670,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
   const [shakingId,setShakingId]=useState(null);
   // Templates
   const [showTemplates,setShowTemplates]=useState(false);
-  // Split task
-  const [splitMenu,setSplitMenu]=useState(null); // {id, x, y}
+  // splitMenu removed (split functionality kept via splitTask function)
   // Dependencies
   const [showDepPicker,setShowDepPicker]=useState(null); // schedule item id
   // Mobile long-press drag
@@ -1991,7 +1990,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
       dependsOn:item.dependsOn||null,
     }));
     setSchedule(p=>[...p.filter(i=>i.id!==itemId),...newItems].sort((a,b)=>a.startTime-b.startTime));
-    setSplitMenu(null);
+    // splitMenu removed
     playSound('drop');
   }
 
@@ -2254,19 +2253,6 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
 
         {step===4&&(
           <div className="fi">
-            <div className="card" style={{marginBottom:14}}>
-              <h3 style={{fontSize:18,fontWeight:800,marginBottom:14}}>איך האנרגיה שלך עכשיו? ⚡</h3>
-              <div style={{display:'flex',gap:8}}>
-                {[['גבוהה','🔥'],['בינונית','😐'],['נמוכה','😴']].map(([lv,ic])=>(
-                  <button key={lv} className={`energy-btn${energy===lv?' selected':''}`} onClick={()=>setEnergy(lv)}>{ic} {lv}</button>
-                ))}
-              </div>
-              {energy&&<div style={{marginTop:10,fontSize:13,color:'var(--text2)',padding:'10px',background:'var(--bg2)',borderRadius:8}}>
-                {energy==='גבוהה'?'✅ מעולה! הלוז מוכן עם הקשות ראשונות':
-                 energy==='בינונית'?'⚡ שמרנו כמה A לאחר כך, ננסה ב ראשון':
-                 '😴 נתחיל בקל ונבנה תנופה — C ו-B קודם'}
-              </div>}
-            </div>
             <button className="big-cta" onClick={()=>setMode('view')}>לצפייה בלוז 📋</button>
           </div>
         )}
@@ -2421,12 +2407,6 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                 {b===0?'0':b+'′'}
               </button>
             ))}
-            <button onClick={()=>setXrayMode(m=>!m)}
-              style={{padding:'4px 9px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',
-                border:`1px solid ${xrayMode?'#2563EB':'var(--border)'}`,
-                background:xrayMode?'rgba(37,99,235,.15)':'transparent'}}>
-              <span style={{color:'#2563EB'}}>התפתחות</span>/<span style={{color:'#16A34A'}}>פנאי</span>
-            </button>
             <button onClick={()=>setShowSidePanel(m=>!m)}
               style={{padding:'4px 9px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',
                 border:`1px solid ${showSidePanel?'var(--green)':'var(--border)'}`,
@@ -2889,19 +2869,10 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                     )}
                     {/* Split task button */}
                     {!item.isBreak&&!isShort&&(
-                      <div style={{position:'relative'}} onMouseDown={e=>e.stopPropagation()}>
-                        <button className="action-btn" style={{fontSize:14,padding:'3px 5px',opacity:1}}
-                          title="פצל משימה"
-                          onClick={e=>{e.stopPropagation();setSplitMenu(splitMenu===item.id?null:item.id);}}>✂️</button>
-                        {splitMenu===item.id&&(
-                          <div className="postpone-menu" style={{minWidth:120}}>
-                            <div style={{fontSize:10,color:'var(--text3)',padding:'4px 8px',fontWeight:700}}>פצל ל:</div>
-                            {[2,3,4].map(n=>(
-                              <button key={n} className="postpone-opt" onClick={()=>splitTask(item.id,n)}>✂️ {n} חלקים</button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <button className="action-btn" style={{fontSize:14,padding:'3px 5px',opacity:1}}
+                        title="פצל משימה ל-2"
+                        onMouseDown={e=>e.stopPropagation()}
+                        onClick={e=>{e.stopPropagation();splitTask(item.id,2);}}>✂️</button>
                     )}
                     <button className="action-btn" style={{fontSize:14,padding:'3px 5px',opacity:1}}
                       onClick={e=>{e.stopPropagation();removeItem(item.id);}}>🗑️</button>
@@ -5662,7 +5633,7 @@ function App(){
   const [headerQuote]=useState(()=>MOTIVATION_QUOTES[Math.floor(Math.random()*MOTIVATION_QUOTES.length)]);
   const [autoTheme,setAutoTheme]=useState(true); // feature 11
   const [declutterMode,setDeclutterMode]=useState(false); // feature 12
-  const [showDailyCard,setShowDailyCard]=useState(false); // disabled
+  // showDailyCard removed (was disabled/unused)
   const [globalSearch,setGlobalSearch]=useState(false); // feature 14
   const [searchQ,setSearchQ]=useState('');
   const [dualLayout,setDualLayout]=useState(false); // feature 16
@@ -5839,15 +5810,8 @@ function App(){
     window.print();
   }
 
-  // Feature 13: daily card state
-  const [dailyImportant,setDailyImportant]=useState('');
-  const [dailyBlocker,setDailyBlocker]=useState('');
-  const [dailyEnergy,setDailyEnergy]=useState('');
+  // Feature 13: daily card removed (was unused)
 
-  function closeDailyCard(){
-    localStorage.setItem('tavors_dailycard_date',new Date().toISOString().split('T')[0]);
-    setShowDailyCard(false);
-  }
 
   return(
     <div style={{display:'flex',flexDirection:'column',height:'100%',background:'var(--bg)',overflow:'hidden'}}>
@@ -5884,51 +5848,7 @@ function App(){
 
       {/* Sync panel removed — moved to Settings screen */}
 
-      {/* ═══ Feature 13: Daily Card Popup ═══ */}
-      {showDailyCard&&(
-        <div className="modal-overlay" style={{zIndex:400}} onClick={closeDailyCard}>
-          <div className="modal" style={{maxWidth:440,textAlign:'center'}} onClick={e=>e.stopPropagation()}>
-            <div style={{fontSize:40,marginBottom:8}}>🌅</div>
-            <div style={{fontSize:20,fontWeight:900,marginBottom:4}}>בוקר טוב, תבור!</div>
-            <div style={{fontSize:12,color:'var(--text3)',marginBottom:20}}>{DAYS[today.getDay()]}, {today.getDate()} ב{MONTHS[today.getMonth()]}</div>
-
-            <div style={{textAlign:'right',display:'grid',gap:14}}>
-              <div>
-                <label style={{fontSize:13,fontWeight:700,color:'var(--accent2)'}}>🎯 מה הדבר החשוב ביותר היום?</label>
-                <input value={dailyImportant} onChange={e=>setDailyImportant(e.target.value)}
-                  placeholder="המשימה האחת שאם תסיים — הכל יהיה קל יותר"
-                  style={{marginTop:6,fontSize:14}}/>
-              </div>
-              <div>
-                <label style={{fontSize:13,fontWeight:700,color:'var(--orange)'}}>⚠️ מה עלול לדחות אותך היום?</label>
-                <input value={dailyBlocker} onChange={e=>setDailyBlocker(e.target.value)}
-                  placeholder="מה הסיכוי הכי גבוה שידרוש את היום?"
-                  style={{marginTop:6,fontSize:14}}/>
-              </div>
-              <div>
-                <label style={{fontSize:13,fontWeight:700,color:'var(--green)'}}>⚡ כמה אנרגיה יש לך עכשיו?</label>
-                <div style={{display:'flex',gap:8,marginTop:8}}>
-                  {[['🔥','גבוהה'],['😐','בינונית'],['😴','נמוכה']].map(([ic,lv])=>(
-                    <button key={lv} onClick={()=>setDailyEnergy(lv)}
-                      className={`energy-btn${dailyEnergy===lv?' selected':''}`}
-                      style={{padding:'10px 8px'}}>
-                      {ic} {lv}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <button className="big-cta" style={{marginTop:20}} onClick={()=>{closeDailyCard();setScreen('schedule');}}>
-              בוא נתחיל! 🚀
-            </button>
-            <button onClick={closeDailyCard}
-              style={{background:'none',border:'none',color:'var(--text3)',cursor:'pointer',fontSize:12,marginTop:10,fontFamily:'inherit'}}>
-              דלג →
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Feature 13: Daily Card removed (was unused) */}
 
       {/* ═══ Feature 14: Global Search ═══ */}
       {globalSearch&&(
