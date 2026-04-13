@@ -560,6 +560,27 @@ function stopListeners(){
   localStorage.setItem('tavors_cal_seeded','1');
 })();
 
+// ── Seed court days as background tasks on all Wednesdays for 2 months ──
+(function seedCourtWednesdays(){
+  if(localStorage.getItem('tavors_court_wed_seeded'))return;
+  const wp=JSON.parse(localStorage.getItem('tavors_weekly')||'{}');
+  const wednesdays=['2026-04-15','2026-04-22','2026-04-29','2026-05-06','2026-05-13','2026-05-20','2026-05-27','2026-06-03','2026-06-10'];
+  const courtName='⚖️ בית משפט';
+  wednesdays.forEach(dk=>{
+    if(!wp[dk])wp[dk]=[];
+    if(!wp[dk].some(e=>e.name===courtName)){
+      wp[dk].push({id:Date.now()+Math.random(),taskId:null,name:courtName,time:'08:30',
+        startTime:8*60+30,endTime:17*60,note:'יום שלם — קליניקה / דיונים / צפייה',
+        done:false,isBreak:false,isFixed:true,isPinned:false,isBackground:true});
+    } else {
+      // Mark existing court entry as background
+      wp[dk]=wp[dk].map(e=>e.name===courtName?{...e,isBackground:true,startTime:8*60+30,endTime:17*60}:e);
+    }
+  });
+  localStorage.setItem('tavors_weekly',JSON.stringify(wp));
+  localStorage.setItem('tavors_court_wed_seeded','1');
+})();
+
 // Auto-connect if room was previously saved
 function tryAutoConnect(){
   console.log('🔌 Trying auto-connect... firebase=',typeof firebase,'room=',_syncRoom);
