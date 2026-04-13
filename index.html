@@ -1986,7 +1986,15 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
           <button className="btn btn-ghost btn-sm" style={{position:'relative'}} onClick={()=>setShowTemplates(t=>!t)}>
             📐 תבנית
           </button>
-          <button className="btn btn-ghost btn-sm" onClick={()=>{setSchedule([]);setMode('build');setStep(2);setWakeTime(nowIsrael());}}>🔄 חדש</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>{
+            // Add fixed daily rituals WITHOUT removing existing tasks
+            const existing=schedule;
+            const rituals=buildSchedule(active,8*60,null,15,dow,viewingToday);
+            // Only add rituals that don't already exist
+            const toAdd=rituals.filter(r=>!existing.some(e=>e.name===r.name));
+            if(toAdd.length===0){alert('כל הריטואלים כבר בלוז');return;}
+            setSchedule(p=>[...p,...toAdd].sort((a,b)=>a.startTime-b.startTime));
+          }}>🔁 הוסף ריטואלים</button>
         </div>
       </div>
 
