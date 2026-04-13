@@ -1394,7 +1394,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
   // Pressure mode overlay
   const [showPressure,setShowPressure]=useState(false);
   // Collapsible menu
-  const [showMenu,setShowMenu]=useState(false);
+  const [showMenu,setShowMenu]=useState(true);
   // Pinch-to-zoom for schedule grid
   const [zoomLevel,setZoomLevel]=useState(PX_DEFAULT);
   const pinchRef=useRef(null); // {startDist, startZoom}
@@ -5119,7 +5119,7 @@ function App(){
   const [searchQ,setSearchQ]=useState('');
   const [dualLayout,setDualLayout]=useState(false); // feature 16
   const [showSyncPanel,setShowSyncPanel]=useState(false);
-  const [showHeaderMenu,setShowHeaderMenu]=useState(false);
+  const [showHeaderMenu,setShowHeaderMenu]=useState(true);
   const [syncRoom,setSyncRoom]=useState(_syncRoom);
   const [syncStatus,setSyncStatus]=useState(_syncReady?'connected':'off');
   const fileInputRef=useRef(null);
