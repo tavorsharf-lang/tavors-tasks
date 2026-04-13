@@ -2810,6 +2810,21 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
               boxShadow:saveMsg?'none':'0 2px 8px rgba(34,197,94,.3)'}}>
             {saveMsg||'💾 שמור'}
           </button>
+          <button onClick={()=>{
+              setSchedule(p=>p.map(i=>({...i,done:true})));
+              schedule.forEach(it=>{
+                if(!it.done&&it.taskId){
+                  setHistory(p=>[...p,{taskId:it.taskId,name:it.name,date:todayKey(),action:'done'}]);
+                }
+              });
+            }}
+            style={{padding:'6px 12px',borderRadius:8,border:'2px solid var(--green)',
+              background:'rgba(34,197,94,.1)',color:'var(--green)',
+              fontFamily:'Heebo,sans-serif',fontSize:16,fontWeight:700,
+              cursor:'pointer',transition:'.2s'}}
+            title="סמן הכל כבוצע">
+            ✓
+          </button>
         </div>
       </div>
 
