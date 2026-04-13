@@ -5191,7 +5191,8 @@ function App(){
   function setWeeklyPlan(v,label='עריכת לוז שבועי'){pushUndo(label);setWeeklyPlanRaw(v);}
   function setParkedItems(v,label='עדכון חניון'){pushUndo(label);setParkedItemsRaw(v);}
 
-  const today=new Date();
+  const [today,setToday]=useState(()=>new Date());
+  useEffect(()=>{const iv=setInterval(()=>setToday(new Date()),30000);return()=>clearInterval(iv);},[]);
   const urgentCount=tasks.filter(t=>t.deadline&&t.deadline!=='weekly-thursday'&&daysLeft(t.deadline)<=3).length;
   const searchRef=useRef(null);
 
@@ -5221,7 +5222,7 @@ function App(){
             fontSize:headerQuote.length>40?9:headerQuote.length>25?11:13}}>
             "{headerQuote}"
           </div>
-          <div style={{fontSize:11,color:'var(--text3)'}}>{DAYS[today.getDay()]}, {today.getDate()} ב{MONTHS[today.getMonth()]} {today.getFullYear()}</div>
+          <div style={{fontSize:11,color:'var(--text3)'}}>{DAYS[today.getDay()]}, {today.getDate()} ב{MONTHS[today.getMonth()]} {today.getFullYear()} · {String(today.getHours()).padStart(2,'0')}:{String(today.getMinutes()).padStart(2,'0')}</div>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
           {/* Sync button */}
