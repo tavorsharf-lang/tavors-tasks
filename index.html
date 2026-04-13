@@ -5080,9 +5080,9 @@ function getTimeThemeClass(){
 }
 
 function App(){
-  const [screen,setScreenRaw]=useState('dashboard');
+  const [screen,setScreenRaw]=useState(()=>localStorage.getItem('tavors_screen')||'dashboard');
   const [weeklyKey,setWeeklyKey]=useState(0);
-  function setScreen(s){setScreenRaw(s);if(s==='weekly')setWeeklyKey(k=>k+1);}
+  function setScreen(s){setScreenRaw(s);localStorage.setItem('tavors_screen',s);if(s==='weekly')setWeeklyKey(k=>k+1);}
   const [isDarkMode,setIsDarkMode]=useState(false);
   const [headerQuote]=useState(()=>MOTIVATION_QUOTES[Math.floor(Math.random()*MOTIVATION_QUOTES.length)]);
   const [autoTheme,setAutoTheme]=useState(true); // feature 11
