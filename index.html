@@ -1077,6 +1077,39 @@ function DLBar({task}){
 
 // ── SCREEN 1: DASHBOARD ───────────────────────────────────────────────
 
+const MOTIVATION_QUOTES=[
+  'הדבר הכי קשה הוא להתחיל. אחרי זה — הכל זורם.',
+  'אתה לא צריך להיות מושלם. אתה צריך להיות בתנועה.',
+  'העתיד שלך נבנה מהבחירות של היום. תבחר חכם.',
+  'כל משימה שתסיים היום — זה משהו שלא ירדוף אותך מחר.',
+  'אל תחכה למוטיבציה. תתחיל, והמוטיבציה תרדוף אחריך.',
+  'יום אחד או יום ראשון. אתה מחליט.',
+  'אתה כבר עשית דברים הרבה יותר קשים מזה. קדימה.',
+  'חצי שעה של ריכוז שווה יותר מיום שלם של ״אני צריך לעשות״.',
+  'לא מה שאתה יודע קובע — מה שאתה עושה עם מה שאתה יודע.',
+  'התבור של עוד שנה יגיד תודה לתבור של היום.',
+  'הצלחה זה לא אירוע — זה הרגלים יומיים.',
+  'אתה לא חייב לסיים הכל היום. אתה חייב להתחיל.',
+  'כל פעם שאתה בוחר את הדבר החשוב על פני הדבר הנוח — אתה מתקדם.',
+  'הלחץ שאתה מרגיש? זה הסימן שאכפת לך. תשתמש בזה.',
+  '20 דקות של עבודה אמיתית שוות יותר מ-3 שעות של הססנות.',
+  'אתה לא מתחיל מאפס. אתה מתחיל מניסיון.',
+  'המשימה הכי גדולה מתחילה בשורה הראשונה.',
+  'תפסיק לתכנן את החיים המושלמים ותתחיל לחיות את היום הטוב.',
+  'כל יום שאתה לומד, מתאמן, ומתקדם — אתה מרחיב את הפער.',
+  'אי נוחות זמנית עדיפה על חרטה קבועה.',
+  'אתה לא צריך לראות את כל המדרגות. רק את הבאה.',
+  'הדברים שאתה דוחה — הם בדיוק הדברים שיזיזו אותך קדימה.',
+  'היום הזה לא יחזור. מה אתה עושה איתו?',
+  'עדיף להתקדם לאט מלעמוד במקום בזמן שאתה מחכה לרגע המושלם.',
+  'המרחק בין ״אני רוצה״ ל״אני עשיתי״ נמדד בפעולות קטנות.',
+  'תהיה הבן אדם שהוא אמר שהוא יהיה.',
+  'אתה בונה את החיים שלך לבנה אחרי לבנה. היום שמים עוד אחת.',
+  'כשקשה — זה סימן שאתה גדל. קל זה סטגנציה.',
+  'אל תשווה את ההתחלה שלך לאמצע של מישהו אחר.',
+  'בסוף היום, השאלה היא לא ״האם הייתי עסוק״ — אלא ״האם התקדמתי״.',
+];
+
 function DashboardScreen({tasks,setScreen,schedule}){
   const [now,setNow]=useState(()=>new Date());
   useEffect(()=>{
@@ -1117,8 +1150,19 @@ function DashboardScreen({tasks,setScreen,schedule}){
   const timelineEnd=upcoming[upcoming.length-1]?.endTime||nowMin+60;
   const timelineSpan=Math.max(timelineEnd-timelineStart,60);
 
+  const [quote]=useState(()=>MOTIVATION_QUOTES[Math.floor(Math.random()*MOTIVATION_QUOTES.length)]);
+
   return(
     <div className="fi">
+      {/* Motivation quote */}
+      <div style={{marginBottom:16,padding:'18px 16px',background:'linear-gradient(135deg,rgba(217,119,6,.08),rgba(245,158,11,.04))',
+        border:'1px solid rgba(217,119,6,.2)',borderRadius:14}}>
+        <div style={{fontSize:18,fontWeight:800,lineHeight:1.6,color:'var(--text)',textAlign:'center',
+          fontStyle:'italic',letterSpacing:'.3px'}}>
+          "{quote}"
+        </div>
+      </div>
+
       <div style={{marginBottom:16}}>
         <div style={{fontSize:13,color:'var(--text3)',marginBottom:3}}>{dateStr}</div>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
