@@ -486,11 +486,22 @@ function startListeners(){
   localStorage.setItem('tavors_cal_seeded','1');
 })();
 
-// Auto-connect if room was previously saved
-if(FIREBASE_CONFIG.apiKey&&_syncRoom){
-  initFirebase();
-  if(_firebaseDB)startListeners();
-}
+// Auto-connect if room was previously saved (delay to ensure Firebase SDK loaded)
+setTimeout(()=>{
+  if(FIREBASE_CONFIG.apiKey&&_syncRoom){
+    initFirebase();
+    if(_firebaseDB){
+      startListeners();
+      console.log('✅ Auto-connected to Firebase room:',_syncRoom);
+    }else{
+      console.warn('⚠️ Firebase SDK not ready, retrying...');
+      setTimeout(()=>{
+        initFirebase();
+        if(_firebaseDB)startListeners();
+      },2000);
+    }
+  }
+},500);
 
 // ── PERSISTENCE HOOK (localStorage + Firebase) ──────────────────────
 function usePersist(key,init){
