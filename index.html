@@ -3862,7 +3862,7 @@ function WeeklySummaryScreen({history,tasks,weeklyPlan,schedule}){
           <div style={{fontSize:48,lineHeight:1}}>{streak>0?'🔥':'💤'}</div>
           <div>
             <div style={{fontSize:28,fontWeight:900,color:streak>0?'#F97316':'var(--text3)'}}>
-              {streak} {streak===1?'יום':'ימים'} רצוף{streak!==1?'ים':''}
+              {streak} {streak===1?'יום רצוף':'ימים רצופים'}
             </div>
             <div style={{fontSize:12,color:'var(--text2)',marginTop:2}}>
               {streak===0?'התחל היום — השלם משימת A אחת לפחות':
