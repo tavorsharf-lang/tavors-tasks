@@ -5088,6 +5088,7 @@ function App(){
   const [searchQ,setSearchQ]=useState('');
   const [dualLayout,setDualLayout]=useState(false); // feature 16
   const [showSyncPanel,setShowSyncPanel]=useState(false);
+  const [showHeaderMenu,setShowHeaderMenu]=useState(false);
   const [syncRoom,setSyncRoom]=useState(_syncRoom);
   const [syncStatus,setSyncStatus]=useState(_syncReady?'connected':'off');
   const fileInputRef=useRef(null);
@@ -5224,71 +5225,66 @@ function App(){
           </div>
           <div style={{fontSize:11,color:'var(--text3)'}}>{DAYS[today.getDay()]}, {today.getDate()} ב{MONTHS[today.getMonth()]} {today.getFullYear()} · {String(today.getHours()).padStart(2,'0')}:{String(today.getMinutes()).padStart(2,'0')}</div>
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
-          {/* Sync button */}
-          <button onClick={()=>setShowSyncPanel(p=>!p)}
+        <div style={{display:'flex',alignItems:'center',gap:6}}>
+          {urgentCount>0&&(
+            <div style={{background:'var(--red)',color:'#fff',borderRadius:20,padding:'3px 10px',fontSize:12,fontWeight:700,cursor:'pointer'}} onClick={()=>setScreen('pressure')}>
+              ⚠️ {urgentCount}
+            </div>
+          )}
+          {undoStack.length>0&&(
+            <button onClick={doUndo}
+              style={{background:'var(--card)',border:'1px solid var(--border)',color:'var(--text)',borderRadius:8,
+                padding:'4px 9px',fontSize:12,fontWeight:600,cursor:'pointer'}}>
+              ↩
+            </button>
+          )}
+          <button onClick={()=>setShowHeaderMenu(m=>!m)}
+            style={{background:showHeaderMenu?'var(--accent)':'transparent',border:'1px solid var(--border)',borderRadius:8,
+              padding:'6px 10px',cursor:'pointer',fontSize:16,lineHeight:1,color:showHeaderMenu?'#fff':'var(--text)',transition:'.2s'}}>
+            ⚙️
+          </button>
+        </div>
+      </div>
+
+      {/* ═══ Header Menu (collapsible) ═══ */}
+      {showHeaderMenu&&(
+        <div style={{background:'var(--card)',border:'1px solid var(--border)',borderBottom:'2px solid var(--accent)',
+          padding:'8px 16px',display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}>
+          <button onClick={()=>{setShowSyncPanel(true);setShowHeaderMenu(false);}}
             style={{background:syncStatus==='connected'?'rgba(34,197,94,.15)':'transparent',
               border:`1px solid ${syncStatus==='connected'?'var(--green)':'var(--border)'}`,borderRadius:8,
-              padding:'4px 9px',cursor:'pointer',fontSize:13,lineHeight:1,transition:'.2s',
-              color:syncStatus==='connected'?'var(--green)':'var(--text3)',position:'relative'}}
-            title={syncStatus==='connected'?`מסונכרן (${syncRoom})`:'סנכרון בין מכשירים'}>
+              padding:'4px 9px',cursor:'pointer',fontSize:13,color:syncStatus==='connected'?'var(--green)':'var(--text3)'}}>
             🔄
-            {syncStatus==='connected'&&<span style={{position:'absolute',top:-2,right:-2,width:7,height:7,borderRadius:'50%',background:'var(--green)',border:'1.5px solid var(--bg)'}}/>}
           </button>
-          {/* Search button */}
-          <button onClick={()=>{setGlobalSearch(true);setSearchQ('');setTimeout(()=>searchRef.current?.focus(),100);}}
+          <button onClick={()=>{setGlobalSearch(true);setSearchQ('');setShowHeaderMenu(false);setTimeout(()=>searchRef.current?.focus(),100);}}
             style={{background:'transparent',border:'1px solid var(--border)',borderRadius:8,
-              padding:'4px 9px',cursor:'pointer',fontSize:13,lineHeight:1,transition:'.2s',color:'var(--text3)',fontFamily:'inherit'}}
-            title="חיפוש גלובלי (Ctrl+K)">
+              padding:'4px 9px',cursor:'pointer',fontSize:13,color:'var(--text3)'}}>
             🔍
           </button>
-          {/* Declutter toggle */}
           <button onClick={()=>setDeclutterMode(m=>!m)}
             style={{background:declutterMode?'rgba(34,197,94,.15)':'transparent',
               border:`1px solid ${declutterMode?'var(--green)':'var(--border)'}`,borderRadius:8,
-              padding:'4px 9px',cursor:'pointer',fontSize:13,lineHeight:1,transition:'.2s',
-              color:declutterMode?'var(--green)':'var(--text3)'}}
-            title={declutterMode?'צא ממצב ניקוי':'מצב ניקוי — הסתר כפתורים'}>
+              padding:'4px 9px',cursor:'pointer',fontSize:13,color:declutterMode?'var(--green)':'var(--text3)'}}>
             {declutterMode?'👁️':'🧹'}
           </button>
-          {/* Dark mode toggle */}
           <button onClick={()=>setIsDarkMode(m=>!m)}
             style={{background:'transparent',border:'1px solid var(--border)',borderRadius:8,
-              padding:'4px 9px',cursor:'pointer',fontSize:15,lineHeight:1,transition:'.2s'}}
-            title={isDarkMode?'מצב בהיר':'מצב כהה'}>
+              padding:'4px 9px',cursor:'pointer',fontSize:15}}>
             {isDarkMode?'☀️':'🌙'}
           </button>
-          {/* PDF export */}
-          <button onClick={exportPDF} data-declutter-hide
+          <button onClick={exportPDF}
             style={{background:'transparent',border:'1px solid var(--border)',borderRadius:8,
-              padding:'4px 9px',cursor:'pointer',fontSize:13,lineHeight:1,transition:'.2s',color:'var(--text3)'}}
-            title="ייצא לוז כ-PDF">
+              padding:'4px 9px',cursor:'pointer',fontSize:13,color:'var(--text3)'}}>
             🖨️
           </button>
-          {/* Dual layout toggle (desktop) */}
-          <button onClick={()=>setDualLayout(m=>!m)} data-declutter-hide
+          <button onClick={()=>setDualLayout(m=>!m)}
             style={{background:dualLayout?'rgba(99,102,241,.15)':'transparent',
               border:`1px solid ${dualLayout?'var(--accent)':'var(--border)'}`,borderRadius:8,
-              padding:'4px 9px',cursor:'pointer',fontSize:13,lineHeight:1,transition:'.2s',
-              color:dualLayout?'var(--accent2)':'var(--text3)'}}
-            title="תצוגה דו-עמודית">
+              padding:'4px 9px',cursor:'pointer',fontSize:13,color:dualLayout?'var(--accent2)':'var(--text3)'}}>
             📐
           </button>
-          {undoStack.length>0&&(
-            <button onClick={doUndo} data-declutter-hide
-              style={{display:'flex',alignItems:'center',gap:5,background:'var(--card)',border:'1px solid var(--border)',
-                color:'var(--text)',borderRadius:8,padding:'5px 10px',fontSize:12,fontWeight:600,cursor:'pointer',transition:'.2s'}}
-              title={`בטל: ${undoStack[undoStack.length-1]?.label}`}>
-              ↩ בטל
-            </button>
-          )}
-          {urgentCount>0&&(
-            <div style={{background:'var(--red)',color:'#fff',borderRadius:20,padding:'3px 10px',fontSize:12,fontWeight:700,cursor:'pointer'}} onClick={()=>setScreen('pressure')}>
-              ⚠️ {urgentCount} דחוף
-            </div>
-          )}
         </div>
-      </div>
+      )}
 
       {/* ═══ Sync Panel ═══ */}
       {showSyncPanel&&(
