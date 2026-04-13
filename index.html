@@ -5521,6 +5521,14 @@ function App(){
   const [showHeaderMenu,setShowHeaderMenu]=useState(true);
   const [syncRoom,setSyncRoom]=useState(_syncRoom);
   const [syncStatus,setSyncStatus]=useState(_syncReady?'connected':'off');
+  // Sync status with global _syncReady (auto-connect may have run after mount)
+  useEffect(()=>{
+    const iv=setInterval(()=>{
+      if(_syncReady&&syncStatus==='off')setSyncStatus('connected');
+      if(_syncRoom&&!syncRoom)setSyncRoom(_syncRoom);
+    },1000);
+    return()=>clearInterval(iv);
+  },[syncStatus,syncRoom]);
   const fileInputRef=useRef(null);
 
   function activateSync(room){
@@ -5547,6 +5555,40 @@ function App(){
     startListeners();
     setSyncStatus('connected');
     setSyncRoom(r);
+  }
+
+  // Force-clean Firebase: dedup all local data, then push to Firebase
+  async function cleanFirebase(){
+    if(!_firebaseDB||!_syncRoom)return;
+    setSyncStatus('cleaning');
+    try{
+      // Dedup all local data first
+      SYNC_KEYS.forEach(k=>{
+        try{
+          const raw=JSON.parse(localStorage.getItem(k)||'null');
+          if(raw){
+            const cleaned=dedup(k,raw);
+            localStorage.setItem(k,JSON.stringify(cleaned));
+          }
+        }catch{}
+      });
+      // Wipe the Firebase room completely
+      await _firebaseDB.ref(`rooms/${_syncRoom}`).remove();
+      console.log('🗑️ Firebase room wiped');
+      // Push clean local data
+      for(const k of SYNC_KEYS){
+        try{
+          const v=JSON.parse(localStorage.getItem(k));
+          const size=Array.isArray(v)?v.length:v?Object.keys(v).length:0;
+          if(size>0)firebaseWrite(k,v);
+        }catch{}
+      }
+      setSyncStatus('connected');
+      console.log('✅ Firebase cleaned and re-synced');
+    }catch(e){
+      console.error('Clean Firebase error:',e);
+      setSyncStatus('connected');
+    }
   }
 
   function disconnectSync(){
@@ -5769,12 +5811,19 @@ function App(){
                     <input value={syncRoom} onChange={e=>setSyncRoom(e.target.value)}
                       placeholder="לדוגמה: tavors-room"
                       style={{fontSize:14,padding:'10px 14px'}}/>
-                    {syncStatus!=='connected'?(
+                    {syncStatus!=='connected'&&syncStatus!=='cleaning'?(
                       <button className="btn btn-primary" onClick={()=>activateSync(syncRoom)} disabled={!syncRoom.trim()}>
                         חבר
                       </button>
                     ):(
-                      <button className="btn btn-danger" onClick={disconnectSync}>נתק</button>
+                      <div style={{display:'flex',gap:6}}>
+                        <button className="btn btn-danger" onClick={disconnectSync}>נתק</button>
+                        <button className="btn btn-ghost btn-sm" onClick={cleanFirebase}
+                          disabled={syncStatus==='cleaning'}
+                          style={{fontSize:11}}>
+                          {syncStatus==='cleaning'?'⏳ מנקה...':'🧹 נקה כפילויות'}
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
