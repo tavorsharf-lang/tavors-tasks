@@ -2099,7 +2099,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
             border:`1px solid ${xrayMode?'#2563EB':'var(--border)'}`,
             background:xrayMode?'rgba(37,99,235,.15)':'transparent',
             color:xrayMode?'#2563EB':'var(--text3)'}}>
-          🏖️ מנוחה/פנאי
+          <span style={{color:'#2563EB'}}>התפתחות</span>/<span style={{color:'#16A34A'}}>פנאי</span>
         </button>
         <button onClick={()=>setShowSidePanel(m=>!m)}
           title="פתח מאגר משימות לצד הלוז — גרור משימה ישירות לשעה"
