@@ -2126,11 +2126,20 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
                 color:showSidePanel?'var(--green)':'var(--text3)'}}>
               📦 {showSidePanel?'סגור':'מאגר'}
             </button>
-            {[15,30].map(delay=>(
-              <button key={delay} onClick={()=>setSchedule(prev=>prev.map(it=>(!it.isPinned&&it.startTime>nowMinG)?{...it,startTime:it.startTime+delay,endTime:it.endTime+delay}:it))}
+            {/* Push later (down) */}
+            {[15,30].map(d=>(
+              <button key={'d'+d} onClick={()=>setSchedule(prev=>prev.map(it=>(!it.isPinned)?{...it,startTime:it.startTime+d,endTime:it.endTime+d}:it))}
                 style={{padding:'4px 9px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',
                   border:'1px solid rgba(239,68,68,.35)',background:'rgba(239,68,68,.07)',color:'#EF4444'}}>
-                ⏩ {delay}′
+                ↓ {d}′
+              </button>
+            ))}
+            {/* Push earlier (up) */}
+            {[15,30].map(d=>(
+              <button key={'u'+d} onClick={()=>setSchedule(prev=>prev.map(it=>(!it.isPinned&&it.startTime-d>=0)?{...it,startTime:it.startTime-d,endTime:it.endTime-d}:it))}
+                style={{padding:'4px 9px',borderRadius:7,fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',
+                  border:'1px solid rgba(37,99,235,.35)',background:'rgba(37,99,235,.07)',color:'#2563EB'}}>
+                ↑ {d}′
               </button>
             ))}
           </div>
