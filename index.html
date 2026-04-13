@@ -1863,8 +1863,8 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
       const tm=e.startTime!=null?e.startTime:(e.time?parseMin(e.time):9*60);
       const dur=e.endTime!=null?e.endTime-tm:(t?taskDur(t):30);
       return{...e,startTime:tm,endTime:tm+dur,done:e.done||false,isBreak:e.isBreak||false,
-        isFixed:e.isFixed||false,isPinned:e.isPinned||false,task:t,note:e.note||'',
-        layerNote:e.layerNote||null,dependsOn:e.dependsOn||null};
+        isFixed:e.isFixed||false,isPinned:e.isPinned||false,isBackground:e.isBackground||false,
+        task:t,note:e.note||'',layerNote:e.layerNote||null,dependsOn:e.dependsOn||null};
     }).sort((a,b)=>a.startTime-b.startTime);
   }
 
@@ -1999,6 +1999,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
           endTime:it.endTime,
           note:it.note||'',
           done:it.done,
+          isBackground:it.isBackground||false,
         }));
       const sig=synced.map(s=>s.id+'|'+s.startTime+'|'+s.endTime+'|'+s.done).join(';');
       if(sig===lastSyncSig.current)return;
@@ -4495,12 +4496,12 @@ function WeeklyDayGrid({tasks,dateKey,entries,setEntries,onBack,dayLabel,dayDate
     return raw.map(e=>{
       if(e.startTime!=null&&e.endTime!=null){
         const t=e.task||tasks.find(x=>x.id===e.taskId)||null;
-        return{...e,done:e.done||false,isBreak:e.isBreak||false,isFixed:e.isFixed||false,isPinned:e.isPinned||false,task:t,note:e.note||''};
+        return{...e,done:e.done||false,isBreak:e.isBreak||false,isFixed:e.isFixed||false,isPinned:e.isPinned||false,isBackground:e.isBackground||false,task:t,note:e.note||''};
       }
       const t=tasks.find(x=>x.id===e.taskId)||null;
       const tm=e.time?parseMin(e.time):9*60;
       const dur=t?taskDur(t):30;
-      return{...e,startTime:tm,endTime:tm+dur,done:e.done||false,isBreak:e.isBreak||false,isFixed:e.isFixed||false,isPinned:e.isPinned||false,task:t,note:e.note||''};
+      return{...e,startTime:tm,endTime:tm+dur,done:e.done||false,isBreak:e.isBreak||false,isFixed:e.isFixed||false,isPinned:e.isPinned||false,isBackground:e.isBackground||false,task:t,note:e.note||''};
     }).sort((a,b)=>a.startTime-b.startTime);
   }
 
@@ -5373,7 +5374,7 @@ function MonthlyYearlyScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,se
         const tm=e.startTime!=null?e.startTime:(e.time?parseMin(e.time):9*60);
         const dur=e.endTime!=null?e.endTime-tm:(t?taskDur(t):30);
         return{id:e.id,taskId:e.taskId||null,name:e.name,startTime:tm,endTime:tm+dur,
-          done:e.done||false,isBreak:e.isBreak||false,isFixed:e.isFixed||false,isPinned:e.isPinned||false,
+          done:e.done||false,isBreak:e.isBreak||false,isFixed:e.isFixed||false,isPinned:e.isPinned||false,isBackground:e.isBackground||false,
           layerNote:e.layerNote||null,task:t,note:e.note||'',dependsOn:e.dependsOn||null,splitGroup:e.splitGroup||null};
       }).sort((a,b)=>a.startTime-b.startTime);
     }
