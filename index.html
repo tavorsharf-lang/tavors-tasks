@@ -1867,7 +1867,8 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
       const dur=e.endTime!=null?e.endTime-tm:(t?taskDur(t):30);
       return{...e,startTime:tm,endTime:tm+dur,done:e.done||false,isBreak:e.isBreak||false,
         isFixed:e.isFixed||false,isPinned:e.isPinned||false,isBackground:e.isBackground||false,
-        task:t,note:e.note||'',layerNote:e.layerNote||null,dependsOn:e.dependsOn||null};
+        task:t,note:e.note||'',layerNote:e.layerNote||null,dependsOn:e.dependsOn||null,
+        splitGroup:e.splitGroup||null,_travelFor:e._travelFor||null};
     }).sort((a,b)=>a.startTime-b.startTime);
   }
 
@@ -1880,7 +1881,7 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
       id:it.id,taskId:it.taskId||null,name:it.name,time:fmtMin(it.startTime),
       startTime:it.startTime,endTime:it.endTime,note:it.note||'',done:it.done||false,
       isBreak:it.isBreak||false,isFixed:it.isFixed||false,isPinned:it.isPinned||false,isBackground:it.isBackground||false,
-      layerNote:it.layerNote||null,dependsOn:it.dependsOn||null,
+      layerNote:it.layerNote||null,dependsOn:it.dependsOn||null,splitGroup:it.splitGroup||null,_travelFor:it._travelFor||null,
     }))}));
   };
 
@@ -2001,8 +2002,14 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
           startTime:it.startTime,
           endTime:it.endTime,
           note:it.note||'',
-          done:it.done,
+          done:it.done||false,
+          isFixed:it.isFixed||false,
+          isPinned:it.isPinned||false,
           isBackground:it.isBackground||false,
+          layerNote:it.layerNote||null,
+          dependsOn:it.dependsOn||null,
+          splitGroup:it.splitGroup||null,
+          _travelFor:it._travelFor||null,
         }));
       const sig=synced.map(s=>s.id+'|'+s.startTime+'|'+s.endTime+'|'+s.done).join(';');
       if(sig===lastSyncSig.current)return;
@@ -4969,7 +4976,7 @@ function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,s
           done:e.done||false,isBreak:e.isBreak||false,isFixed:e.isFixed||false,
           isPinned:e.isPinned||false,isBackground:e.isBackground||false,
           layerNote:e.layerNote||null,task:t,note:e.note||'',
-          dependsOn:e.dependsOn||null,splitGroup:e.splitGroup||null,
+          dependsOn:e.dependsOn||null,splitGroup:e.splitGroup||null,_travelFor:e._travelFor||null,
         };
       }).sort((a,b)=>a.startTime-b.startTime);
     }
@@ -4985,7 +4992,7 @@ function WeeklyScheduleScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,s
           time:fmtMin(it.startTime),startTime:it.startTime,endTime:it.endTime,
           note:it.note||'',done:it.done||false,
           isBreak:it.isBreak||false,isFixed:it.isFixed||false,isPinned:it.isPinned||false,isBackground:it.isBackground||false,
-          layerNote:it.layerNote||null,dependsOn:it.dependsOn||null,splitGroup:it.splitGroup||null,
+          layerNote:it.layerNote||null,dependsOn:it.dependsOn||null,splitGroup:it.splitGroup||null,_travelFor:it._travelFor||null,
         }));
         return{...prev,[expandDay]:entries};
       });
@@ -5381,7 +5388,7 @@ function MonthlyYearlyScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,se
         const dur=e.endTime!=null?e.endTime-tm:(t?taskDur(t):30);
         return{id:e.id,taskId:e.taskId||null,name:e.name,startTime:tm,endTime:tm+dur,
           done:e.done||false,isBreak:e.isBreak||false,isFixed:e.isFixed||false,isPinned:e.isPinned||false,isBackground:e.isBackground||false,
-          layerNote:e.layerNote||null,task:t,note:e.note||'',dependsOn:e.dependsOn||null,splitGroup:e.splitGroup||null};
+          layerNote:e.layerNote||null,task:t,note:e.note||'',dependsOn:e.dependsOn||null,splitGroup:e.splitGroup||null,_travelFor:e._travelFor||null};
       }).sort((a,b)=>a.startTime-b.startTime);
     }
     function setDaySchedule(v){
@@ -5392,7 +5399,7 @@ function MonthlyYearlyScreen({tasks,setTasks,weeklyPlan,setWeeklyPlan,history,se
           id:it.id,taskId:it.taskId||null,name:it.name,time:fmtMin(it.startTime),
           startTime:it.startTime,endTime:it.endTime,note:it.note||'',done:it.done||false,
           isBreak:it.isBreak||false,isFixed:it.isFixed||false,isPinned:it.isPinned||false,isBackground:it.isBackground||false,
-          layerNote:it.layerNote||null,dependsOn:it.dependsOn||null,splitGroup:it.splitGroup||null,
+          layerNote:it.layerNote||null,dependsOn:it.dependsOn||null,splitGroup:it.splitGroup||null,_travelFor:it._travelFor||null,
         }));
         return{...prev,[expandDay]:entries};
       });
