@@ -1518,6 +1518,11 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
       }
       // Apply shift for both move and resize — pass draggedId to allow overlap
       const final=snapMagnet?applyShift(finalRaw,snapBuffer,draggedId):finalRaw;
+      // Debug: log if magnet shifted anything
+      if(snapMagnet){
+        const shifted=final.filter((it,i)=>finalRaw.find(r=>r.id===it.id)&&finalRaw.find(r=>r.id===it.id).startTime!==it.startTime);
+        if(shifted.length)console.log('🧲 Magnet shifted',shifted.length,'items, buffer:',snapBuffer);
+      }
       setScheduleRef.current(final);
       setLiveSchedule(null);
       pendingRef.current=null;
