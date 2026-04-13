@@ -603,21 +603,10 @@ if(document.readyState==='complete')tryAutoConnect();
 else window.addEventListener('load',tryAutoConnect);
 
 // ── DEDUP: clean up duplicate schedule/weekly items ──────────────────
-// Names that are always background tasks
-const BACKGROUND_NAMES=['בית משפט','קליניקה שופטים'];
-
-function autoBackground(item){
-  if(item.isBackground)return item;
-  const name=(item.name||'');
-  if(BACKGROUND_NAMES.some(n=>name.includes(n)))return{...item,isBackground:true};
-  return item;
-}
-
 function dedupArray(arr){
   if(!Array.isArray(arr)||!arr.length)return arr;
-  // Auto-mark background items + deduplicate
   const seen=new Set();
-  return arr.map(autoBackground).filter(it=>{
+  return arr.filter(it=>{
     const name=(it.name||'').trim();
     if(!name)return true;
     if(seen.has(name))return false;
