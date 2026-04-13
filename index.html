@@ -298,6 +298,9 @@ label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-wei
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .modal{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;width:100%;max-width:520px;margin:auto 0}
 .form-grid{display:grid;gap:12px}
+.time-trio{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.more-toggle{width:100%;padding:10px;border-radius:10px;border:1px dashed var(--border);background:transparent;color:var(--text3);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;text-align:right;transition:.2s}
+.more-toggle:hover{border-color:var(--accent);color:var(--text2)}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .big-cta{width:100%;padding:15px;border-radius:12px;border:none;background:linear-gradient(135deg,#D97706,#F59E0B);color:#fff;font-family:'Heebo',sans-serif;font-size:17px;font-weight:700;cursor:pointer;transition:.2s;margin-top:8px}
 .big-cta:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(217,119,6,.4)}
@@ -3223,6 +3226,7 @@ function ScheduleItemEditModal({item,onSave,onClose}){
   const [form,setForm]=useState({
     name:item.name||'',
     st:fmtMin(item.startTime),
+    et:fmtMin(item.endTime),
     durMin:dur,
     note:item.note||'',
     rating:t?.rating||'C',
@@ -3241,8 +3245,17 @@ function ScheduleItemEditModal({item,onSave,onClose}){
     dominoEffect:t?.dominoEffect||'',
     alertProfile:t?.alertProfile||'auto',
     requiresTravel:t?.requiresTravel||false,
+    travelDuration:t?.travelDuration||item.travelDuration||30,
   });
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  // Check if "more" section has non-default values → auto-expand
+  const hasExtra=form.energyRequired!=='בינונית'||form.size!=='בינונית'||form.energyEffect!=='ניטרלי'||form.entryBarrier!=='התארגנות קלה'||(typeof form.layerable==='string'&&form.layerable)||form.dominoEffect||form.timeRequired||form.frequency||form.alertProfile!=='auto'||form.requiresTravel;
+  const [showMore,setShowMore]=useState(!!hasExtra);
+
+  // Time trio sync: start↔end↔dur
+  function setSt(v){setForm(f=>{const s=parseMin(v),d=Number(f.durMin);return{...f,st:v,et:fmtMin(s+d)};});}
+  function setEt(v){setForm(f=>{const s=parseMin(f.st),e=parseMin(v);const d=Math.max(5,e-s);return{...f,et:v,durMin:d};});}
+  function setDur(v){setForm(f=>{const s=parseMin(f.st),d=Number(v);return{...f,durMin:d,et:fmtMin(s+d)};});}
 
   function save(){
     const stm=parseMin(form.st);
@@ -3262,185 +3275,183 @@ function ScheduleItemEditModal({item,onSave,onClose}){
     onSave(result);
   }
 
+  const dlDays=form.deadline?daysLeft(form.deadline):null;
+
   return(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e=>e.stopPropagation()}>
         <div style={{fontSize:17,fontWeight:700,marginBottom:14}}>✏️ עריכת פריט בלוז</div>
         <div className="form-grid">
+
+          {/* 1. Name */}
           <div>
             <label>שם המשימה *</label>
             <input value={form.name} onChange={e=>set('name',e.target.value)} placeholder="שם המשימה"/>
           </div>
-          <div className="form-row">
+
+          {/* 2. Time trio: start + end + duration */}
+          <div className="time-trio">
             <div>
-              <label>שעת התחלה</label>
-              <input type="time" value={form.st} onChange={e=>{
-                set('st',e.target.value);
-                // Update duration if end time mode
-                if(form.endTimeMode&&form.et){
-                  const s=parseMin(e.target.value),en=parseMin(form.et);
-                  if(en>s)set('durMin',en-s);
-                }
-              }}/>
+              <label>התחלה</label>
+              <input type="time" value={form.st} onChange={e=>setSt(e.target.value)}/>
             </div>
             <div>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                <label>{form.endTimeMode?'שעת סיום':'משך (דקות)'}</label>
-                <button type="button" onClick={()=>{
-                  if(!form.endTimeMode){
-                    // Switch to end time mode — calculate end time from start+dur
-                    const endMin=parseMin(form.st)+Number(form.durMin);
-                    set('et',fmtMin(endMin));
-                  }
-                  set('endTimeMode',!form.endTimeMode);
-                }} style={{background:'none',border:'none',color:'var(--accent2)',cursor:'pointer',fontSize:10,fontFamily:'inherit'}}>
-                  {form.endTimeMode?'← דקות':'שעה →'}
-                </button>
-              </div>
-              {form.endTimeMode?(
-                <input type="time" value={form.et||fmtMin(parseMin(form.st)+Number(form.durMin))} onChange={e=>{
-                  set('et',e.target.value);
-                  const s=parseMin(form.st),en=parseMin(e.target.value);
-                  if(en>s)set('durMin',en-s);
-                }}/>
-              ):(
-                <input type="number" min={5} max={480} step={5} value={form.durMin} onChange={e=>set('durMin',e.target.value)}/>
-              )}
+              <label>סיום</label>
+              <input type="time" value={form.et} onChange={e=>setEt(e.target.value)}/>
+            </div>
+            <div>
+              <label>משך (דק')</label>
+              <input type="number" min={5} max={720} step={5} value={form.durMin} onChange={e=>setDur(e.target.value)}/>
             </div>
           </div>
+
+          {/* 3. Deadline + days remaining */}
           <div className="form-row">
             <div>
-              <label>דירוג ABCDE</label>
+              <label>📅 דדליין</label>
+              <input type="date" value={form.deadline||''} onChange={e=>set('deadline',e.target.value||null)}/>
+            </div>
+            {dlDays!==null&&(
+              <div style={{display:'flex',alignItems:'flex-end',paddingBottom:4}}>
+                <span style={{fontSize:13,fontWeight:700,color:dlDays<=3?'var(--red)':dlDays<=7?'var(--orange)':dlDays<=14?'var(--yellow)':'var(--green)'}}>
+                  {dlDays===0?'היום!':dlDays===1?'מחר!':dlDays<0?`עבר ב-${Math.abs(dlDays)} ימים`:`${dlDays} ימים נותרו`}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* 4. Rating + Quadrant + Domain */}
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1.5fr',gap:6}}>
+            <div>
+              <label>דירוג</label>
               <select value={form.rating} onChange={e=>set('rating',e.target.value)}>
                 {['A','B','C','D','E'].map(r=><option key={r} value={r}>{r}</option>)}
               </select>
             </div>
             <div>
-              <label>רביע אייזנהאואר</label>
+              <label>רביע</label>
               <select value={form.quadrant} onChange={e=>set('quadrant',Number(e.target.value))}>
                 {[1,2,3,4].map(q=><option key={q} value={q}>{q}</option>)}
               </select>
             </div>
+            <div>
+              <label>תחום</label>
+              <input value={form.domain} onChange={e=>set('domain',e.target.value)} placeholder="אקדמיה..."/>
+            </div>
           </div>
-          <div>
-            <label>תחום</label>
-            <input value={form.domain} onChange={e=>set('domain',e.target.value)} placeholder="אקדמיה, בריאות..."/>
-          </div>
-          <MatrixCalculator value={form.matrixScore} onChange={v=>set('matrixScore',v)}/>
+
+          {/* 5. Damage type + Matrix score */}
           <div className="form-row">
             <div>
               <label>סוג נזק</label>
               <select value={form.damageType} onChange={e=>set('damageType',e.target.value)}>
                 <option value="hard-deadline">🔴 דדליין קשיח</option>
-                <option value="growing">🟠 הנזק גדל כל יום</option>
-                <option value="fixed-daily">🟡 נזק קבוע ליום</option>
-                <option value="zero">🟢 אפס נזק</option>
+                <option value="growing">🟠 גדל כל יום</option>
+                <option value="fixed-daily">🟡 קבוע ליום</option>
+                <option value="zero">🟢 אפס</option>
               </select>
             </div>
-            <div>
-              <label>דדליין</label>
-              <input type="date" value={form.deadline||''} onChange={e=>set('deadline',e.target.value||null)}/>
-            </div>
-          </div>
-          <div className="form-row">
-            <div>
-              <label>זמן לביצוע</label>
-              <input value={form.timeRequired} onChange={e=>set('timeRequired',e.target.value)} placeholder="3 שעות/יום"/>
-            </div>
-            <div>
-              <label>תדירות</label>
-              <input value={form.frequency} onChange={e=>set('frequency',e.target.value)} placeholder="יומי"/>
-            </div>
-          </div>
-          <div className="form-row">
-            <div>
-              <label>גודל</label>
-              <select value={form.size} onChange={e=>set('size',e.target.value)}>
-                <option value="גדולה">גדולה</option><option value="בינונית">בינונית</option><option value="קטנה">קטנה</option>
-              </select>
-            </div>
-            <div>
-              <label>אנרגיה נדרשת</label>
-              <select value={form.energyRequired} onChange={e=>set('energyRequired',e.target.value)}>
-                <option value="גבוהה">גבוהה</option><option value="בינונית">בינונית</option><option value="נמוכה">נמוכה</option><option value="אפס">אפס</option>
-              </select>
-            </div>
-          </div>
-          <div className="form-row">
-            <div>
-              <label>אפקט על אנרגיה</label>
-              <select value={form.energyEffect} onChange={e=>set('energyEffect',e.target.value)}>
-                <option value="מטעין">מטעין</option><option value="מרוקן">מרוקן</option><option value="ניטרלי">ניטרלי</option>
-              </select>
-            </div>
-            <div>
-              <label>חסם כניסה</label>
-              <select value={form.entryBarrier} onChange={e=>set('entryBarrier',e.target.value)}>
-                <option value="החלטה בלבד">החלטה בלבד</option>
-                <option value="התארגנות קלה">התארגנות קלה</option>
-                <option value="התארגנות מורכבת">התארגנות מורכבת</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label>להקביל (ריק = לא)</label>
-            <input value={typeof form.layerable==='string'?form.layerable:''} onChange={e=>set('layerable',e.target.value||false)} placeholder="כן — עם מה"/>
-          </div>
-          <div>
-            <label>השפעת דומינו</label>
-            <textarea value={form.dominoEffect} onChange={e=>set('dominoEffect',e.target.value)} rows={2} placeholder="מה קורה אם מסיימים..."/>
-          </div>
-          <div>
-            <label>📝 הערה (אופציונלי)</label>
-            <textarea value={form.note} onChange={e=>set('note',e.target.value)} rows={2} placeholder="הוסף הערה, תזכורת, קישור..."/>
+            <MatrixCalculator value={form.matrixScore} onChange={v=>set('matrixScore',v)}
+              onDetailChange={d=>{set('energyRequired',d.energyRequired);set('size',d.size);set('damageType',d.damageType);}}/>
           </div>
 
-          {/* Alert profile + Travel */}
-          <div style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:10,padding:'12px'}}>
-            <div style={{fontSize:12,fontWeight:700,color:'var(--text2)',marginBottom:10}}>🔔 התראות ונסיעה</div>
+          {/* 6. Note */}
+          <div>
+            <label>📝 הערה</label>
+            <input value={form.note} onChange={e=>set('note',e.target.value)} placeholder="הערה, תזכורת, קישור..."/>
+          </div>
+
+          {/* 7. More details toggle */}
+          <button type="button" className="more-toggle" onClick={()=>setShowMore(m=>!m)}>
+            {showMore?'⬆ הסתר פרטים נוספים':'⬇ פרטים נוספים'}
+          </button>
+
+          {showMore&&<>
             <div className="form-row">
               <div>
-                <label>מסלול התראות</label>
-                <select value={form.alertProfile} onChange={e=>set('alertProfile',e.target.value)} style={{fontSize:13}}>
-                  <option value="auto">🤖 אוטומטי</option>
-                  <option value="critical">🔴 קריטי</option>
-                  <option value="important">🟠 חשוב</option>
-                  <option value="standard">🟡 רגיל</option>
-                  <option value="light">🟢 קל</option>
-                  <option value="minimal">⚪ מינימלי</option>
-                  <option value="none">🔕 ללא</option>
+                <label>אנרגיה נדרשת</label>
+                <select value={form.energyRequired} onChange={e=>set('energyRequired',e.target.value)}>
+                  <option value="גבוהה">גבוהה</option><option value="בינונית">בינונית</option><option value="נמוכה">נמוכה</option><option value="אפס">אפס</option>
                 </select>
               </div>
               <div>
-                <label>דורש נסיעה?</label>
-                <button onClick={()=>set('requiresTravel',!form.requiresTravel)} type="button"
-                  style={{width:'100%',padding:'8px 12px',borderRadius:8,fontSize:13,fontWeight:600,
-                    border:`2px solid ${form.requiresTravel?'var(--accent)':'var(--border)'}`,
-                    background:form.requiresTravel?'rgba(99,102,241,.15)':'var(--bg2)',
-                    color:form.requiresTravel?'var(--accent2)':'var(--text3)',
-                    cursor:'pointer',fontFamily:'inherit'}}>
-                  {form.requiresTravel?'🚗 כן':'🏠 לא'}
-                </button>
-                {form.requiresTravel&&(
-                  <div style={{marginTop:6}}>
-                    <label>זמן נסיעה (דקות)</label>
-                    <input type="number" min={5} max={180} step={5} value={form.travelDuration||30}
-                      onChange={e=>set('travelDuration',Number(e.target.value))}
-                      style={{width:'100%'}}/>
-                  </div>
-                )}
+                <label>גודל</label>
+                <select value={form.size} onChange={e=>set('size',e.target.value)}>
+                  <option value="גדולה">גדולה</option><option value="בינונית">בינונית</option><option value="קטנה">קטנה</option>
+                </select>
               </div>
             </div>
-          </div>
+            <div className="form-row">
+              <div>
+                <label>אפקט על אנרגיה</label>
+                <select value={form.energyEffect} onChange={e=>set('energyEffect',e.target.value)}>
+                  <option value="מטעין">מטעין</option><option value="מרוקן">מרוקן</option><option value="ניטרלי">ניטרלי</option>
+                </select>
+              </div>
+              <div>
+                <label>חסם כניסה</label>
+                <select value={form.entryBarrier} onChange={e=>set('entryBarrier',e.target.value)}>
+                  <option value="החלטה בלבד">החלטה בלבד</option><option value="התארגנות קלה">התארגנות קלה</option><option value="התארגנות מורכבת">התארגנות מורכבת</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-row">
+              <div>
+                <label>זמן לביצוע</label>
+                <input value={form.timeRequired} onChange={e=>set('timeRequired',e.target.value)} placeholder="3 שעות/יום"/>
+              </div>
+              <div>
+                <label>תדירות</label>
+                <input value={form.frequency} onChange={e=>set('frequency',e.target.value)} placeholder="יומי"/>
+              </div>
+            </div>
+            <div>
+              <label>להקביל</label>
+              <input value={typeof form.layerable==='string'?form.layerable:''} onChange={e=>set('layerable',e.target.value||false)} placeholder="כן — עם מה"/>
+            </div>
+            <div>
+              <label>השפעת דומינו</label>
+              <textarea value={form.dominoEffect} onChange={e=>set('dominoEffect',e.target.value)} rows={2} placeholder="מה קורה אם מסיימים..."/>
+            </div>
+            <div style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:10,padding:'12px'}}>
+              <div style={{fontSize:12,fontWeight:700,color:'var(--text2)',marginBottom:10}}>🔔 התראות ונסיעה</div>
+              <div className="form-row">
+                <div>
+                  <label>מסלול התראות</label>
+                  <select value={form.alertProfile} onChange={e=>set('alertProfile',e.target.value)} style={{fontSize:13}}>
+                    <option value="auto">🤖 אוטומטי</option><option value="critical">🔴 קריטי</option><option value="important">🟠 חשוב</option>
+                    <option value="standard">🟡 רגיל</option><option value="light">🟢 קל</option><option value="minimal">⚪ מינימלי</option><option value="none">🔕 ללא</option>
+                  </select>
+                </div>
+                <div>
+                  <label>נסיעה</label>
+                  <button onClick={()=>set('requiresTravel',!form.requiresTravel)} type="button"
+                    style={{width:'100%',padding:'8px 12px',borderRadius:8,fontSize:13,fontWeight:600,
+                      border:`2px solid ${form.requiresTravel?'var(--accent)':'var(--border)'}`,
+                      background:form.requiresTravel?'rgba(99,102,241,.15)':'var(--bg2)',
+                      color:form.requiresTravel?'var(--accent2)':'var(--text3)',cursor:'pointer',fontFamily:'inherit'}}>
+                    {form.requiresTravel?'🚗 כן':'🏠 לא'}
+                  </button>
+                  {form.requiresTravel&&(
+                    <div style={{marginTop:6}}>
+                      <label>זמן נסיעה (דק')</label>
+                      <input type="number" min={5} max={180} step={5} value={form.travelDuration||30}
+                        onChange={e=>set('travelDuration',Number(e.target.value))} style={{width:'100%'}}/>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <button type="button" onClick={()=>setIsBg(b=>!b)}
+              style={{width:'100%',padding:'8px 12px',borderRadius:8,fontSize:12,fontWeight:600,
+                cursor:'pointer',fontFamily:'inherit',textAlign:'right',
+                border:`2px solid ${isBg?'rgba(99,102,241,.5)':'var(--border)'}`,
+                background:isBg?'rgba(99,102,241,.1)':'transparent',
+                color:isBg?'var(--accent)':'var(--text3)'}}>
+              {isBg?'🏢 משימת רקע (יום שלם) — ריטואלים ייכנסו בתוכה':'🏢 סמן כמשימת רקע (יום שלם)'}
+            </button>
+          </>}
         </div>
-        <button type="button" onClick={()=>setIsBg(b=>!b)}
-          style={{width:'100%',marginTop:10,padding:'8px 12px',borderRadius:8,fontSize:12,fontWeight:600,
-            cursor:'pointer',fontFamily:'inherit',textAlign:'right',
-            border:`2px solid ${isBg?'rgba(99,102,241,.5)':'var(--border)'}`,
-            background:isBg?'rgba(99,102,241,.1)':'transparent',
-            color:isBg?'var(--accent)':'var(--text3)'}}>
-          {isBg?'🏢 משימת רקע (יום שלם) — ריטואלים ייכנסו בתוכה':'🏢 סמן כמשימת רקע (יום שלם)'}
-        </button>
         <div style={{display:'flex',gap:8,marginTop:14}}>
           <button className="btn btn-ghost" onClick={onClose}>ביטול</button>
           <button className="btn btn-primary" onClick={save} disabled={!form.name}>שמור</button>
@@ -3451,14 +3462,13 @@ function ScheduleItemEditModal({item,onSave,onClose}){
 }
 
 function AddToScheduleModal({tasks,setSchedule,setTasks,onClose}){
-  const [mode,setMode]=useState('pick'); // 'pick' = בחר ממאגר, 'new' = משימה חדשה
+  const [mode,setMode]=useState('pick');
   const [sel,setSel]=useState('');
-  const [st,setSt]=useState('12:00');
-  const [dur,setDur]=useState(30);
-  const [endTimeMode,setEndTimeMode]=useState(false);
-  const [et,setEt]=useState('12:30');
+  const [st,_setSt]=useState('12:00');
+  const [dur,_setDur]=useState(30);
+  const [et,_setEt]=useState('12:30');
   const [isBackground,setIsBackground]=useState(false);
-  // full task fields for new task
+  const [showMore,setShowMore]=useState(false);
   const [form,setForm]=useState({
     name:'',rating:'C',quadrant:2,domain:'',matrixScore:20,
     damageType:'fixed-daily',deadline:'',timeRequired:'',frequency:'',
@@ -3468,19 +3478,18 @@ function AddToScheduleModal({tasks,setSchedule,setTasks,onClose}){
   const setF=(k,v)=>setForm(f=>({...f,[k]:v}));
   const [saveToRepo,setSaveToRepo]=useState(true);
 
+  // Time trio sync
+  function setSt(v){_setSt(v);_setEt(fmtMin(parseMin(v)+dur));}
+  function setEtVal(v){_setEt(v);const d=Math.max(5,parseMin(v)-parseMin(st));_setDur(d);}
+  function setDurVal(v){_setDur(Number(v));_setEt(fmtMin(parseMin(st)+Number(v)));}
+
   function pickTask(id){
     setSel(id);
     if(id){
       const t=tasks.find(x=>x.id===Number(id));
-      if(t) setDur(taskDur(t));
-      // Recall last used time for this task
-      try{
-        const lastTimes=JSON.parse(localStorage.getItem('tavors_last_times')||'{}');
-        if(lastTimes[id]){
-          setSt(lastTimes[id].st);
-          setDur(lastTimes[id].dur);
-          if(lastTimes[id].et)setEt(lastTimes[id].et);
-        }
+      if(t){_setDur(taskDur(t));_setEt(fmtMin(parseMin(st)+taskDur(t)));}
+      try{const lt=JSON.parse(localStorage.getItem('tavors_last_times')||'{}');
+        if(lt[id]){_setSt(lt[id].st);_setDur(lt[id].dur);_setEt(lt[id].et||fmtMin(parseMin(lt[id].st)+lt[id].dur));}
       }catch(e){}
     }
   }
@@ -3494,11 +3503,8 @@ function AddToScheduleModal({tasks,setSchedule,setTasks,onClose}){
         startTime:stm,endTime:stm+dur,done:false,isBreak:false,isFixed:false,
         layerNote:t?.layerable?'להקביל: '+t.layerable:null,task:t||null,note:'',...bgFlag}]
         .sort((a,b)=>a.startTime-b.startTime));
-      // Remember last used time for this task
-      if(sel){try{
-        const lastTimes=JSON.parse(localStorage.getItem('tavors_last_times')||'{}');
-        lastTimes[sel]={st,dur,et};
-        localStorage.setItem('tavors_last_times',JSON.stringify(lastTimes));
+      if(sel){try{const lt=JSON.parse(localStorage.getItem('tavors_last_times')||'{}');
+        lt[sel]={st,dur,et};localStorage.setItem('tavors_last_times',JSON.stringify(lt));
       }catch(e){}}
     } else {
       if(saveToRepo){
@@ -3519,13 +3525,14 @@ function AddToScheduleModal({tasks,setSchedule,setTasks,onClose}){
   }
 
   const canSave=mode==='pick'?!!sel:(!!form.name);
+  const selTask=sel?tasks.find(x=>x.id===Number(sel)):null;
+  const dlDays=form.deadline?daysLeft(form.deadline):null;
 
   return(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e=>e.stopPropagation()}>
         <div style={{fontSize:17,fontWeight:700,marginBottom:14}}>+ הוסף משימה ללוז</div>
 
-        {/* mode toggle */}
         <div style={{display:'flex',gap:6,marginBottom:14}}>
           <button onClick={()=>setMode('pick')}
             style={{flex:1,padding:'8px',borderRadius:8,border:`2px solid ${mode==='pick'?'var(--accent)':'var(--border)'}`,
@@ -3542,48 +3549,9 @@ function AddToScheduleModal({tasks,setSchedule,setTasks,onClose}){
         </div>
 
         <div className="form-grid">
-          {/* shared: time + duration/end time */}
-          <div className="form-row">
-            <div>
-              <label>שעת התחלה</label>
-              <input type="time" value={st} onChange={e=>{
-                setSt(e.target.value);
-                if(endTimeMode){const s=parseMin(e.target.value),en=parseMin(et);if(en>s)setDur(en-s);}
-              }}/>
-            </div>
-            <div>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                <label>{endTimeMode?'שעת סיום':'משך (דקות)'}</label>
-                <button type="button" onClick={()=>{
-                  if(!endTimeMode)setEt(fmtMin(parseMin(st)+dur));
-                  setEndTimeMode(m=>!m);
-                }} style={{background:'none',border:'none',color:'var(--accent2)',cursor:'pointer',fontSize:10,fontFamily:'inherit'}}>
-                  {endTimeMode?'← דקות':'שעה →'}
-                </button>
-              </div>
-              {endTimeMode?(
-                <input type="time" value={et} onChange={e=>{
-                  setEt(e.target.value);
-                  const s=parseMin(st),en=parseMin(e.target.value);
-                  if(en>s)setDur(en-s);
-                }}/>
-              ):(
-                <input type="number" min={5} max={480} step={5} value={dur} onChange={e=>setDur(Number(e.target.value))}/>
-              )}
-            </div>
-          </div>
 
-          {/* Background / full-day toggle */}
-          <button type="button" onClick={()=>setIsBackground(b=>!b)}
-            style={{width:'100%',padding:'8px 12px',borderRadius:8,fontSize:12,fontWeight:600,
-              cursor:'pointer',fontFamily:'inherit',textAlign:'right',
-              border:`2px solid ${isBackground?'rgba(99,102,241,.5)':'var(--border)'}`,
-              background:isBackground?'rgba(99,102,241,.1)':'transparent',
-              color:isBackground?'var(--accent)':'var(--text3)'}}>
-            {isBackground?'🏢 משימת רקע (יום שלם) — ריטואלים ייכנסו בתוכה':'🏢 סמן כמשימת רקע (יום שלם)'}
-          </button>
-
-          {mode==='pick'&&(
+          {/* Pick mode: task selector + info card */}
+          {mode==='pick'&&(<>
             <div>
               <label>בחר משימה</label>
               <select value={sel} onChange={e=>pickTask(e.target.value)}>
@@ -3591,16 +3559,61 @@ function AddToScheduleModal({tasks,setSchedule,setTasks,onClose}){
                 {tasks.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </div>
-          )}
+            {selTask&&(
+              <div style={{display:'flex',gap:8,alignItems:'center',padding:'6px 10px',background:'var(--bg2)',borderRadius:8,fontSize:12}}>
+                <RBadge rating={selTask.rating}/><DDot type={selTask.damageType}/>
+                <span style={{color:'var(--text2)'}}>{selTask.domain||''}</span>
+                {selTask.deadline&&selTask.deadline!=='weekly-thursday'&&(
+                  <span style={{color:daysLeft(selTask.deadline)<=7?'var(--red)':'var(--text3)',fontWeight:600}}>
+                    📅 {selTask.deadline}
+                  </span>
+                )}
+              </div>
+            )}
+          </>)}
 
-          {mode==='new'&&(<>
+          {/* New mode: name */}
+          {mode==='new'&&(
             <div>
               <label>שם המשימה *</label>
               <input value={form.name} onChange={e=>setF('name',e.target.value)} placeholder="שם המשימה"/>
             </div>
+          )}
+
+          {/* Time trio (shared) */}
+          <div className="time-trio">
+            <div>
+              <label>התחלה</label>
+              <input type="time" value={st} onChange={e=>setSt(e.target.value)}/>
+            </div>
+            <div>
+              <label>סיום</label>
+              <input type="time" value={et} onChange={e=>setEtVal(e.target.value)}/>
+            </div>
+            <div>
+              <label>משך (דק')</label>
+              <input type="number" min={5} max={720} step={5} value={dur} onChange={e=>setDurVal(e.target.value)}/>
+            </div>
+          </div>
+
+          {/* New mode: essential fields */}
+          {mode==='new'&&(<>
             <div className="form-row">
               <div>
-                <label>דירוג ABCDE</label>
+                <label>📅 דדליין</label>
+                <input type="date" value={form.deadline||''} onChange={e=>setF('deadline',e.target.value||null)}/>
+              </div>
+              {dlDays!==null&&(
+                <div style={{display:'flex',alignItems:'flex-end',paddingBottom:4}}>
+                  <span style={{fontSize:13,fontWeight:700,color:dlDays<=3?'var(--red)':dlDays<=7?'var(--orange)':dlDays<=14?'var(--yellow)':'var(--green)'}}>
+                    {dlDays===0?'היום!':dlDays===1?'מחר!':dlDays<0?`עבר ב-${Math.abs(dlDays)} ימים`:`${dlDays} ימים נותרו`}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1.5fr',gap:6}}>
+              <div>
+                <label>דירוג</label>
                 <select value={form.rating} onChange={e=>setF('rating',e.target.value)}>
                   {['A','B','C','D','E'].map(r=><option key={r} value={r}>{r}</option>)}
                 </select>
@@ -3611,84 +3624,85 @@ function AddToScheduleModal({tasks,setSchedule,setTasks,onClose}){
                   {[1,2,3,4].map(q=><option key={q} value={q}>{q}</option>)}
                 </select>
               </div>
+              <div>
+                <label>תחום</label>
+                <input value={form.domain} onChange={e=>setF('domain',e.target.value)} placeholder="אקדמיה..."/>
+              </div>
             </div>
-            <div>
-              <label>תחום</label>
-              <input value={form.domain} onChange={e=>setF('domain',e.target.value)} placeholder="אקדמיה, בריאות..."/>
-            </div>
-            <MatrixCalculator value={form.matrixScore} onChange={v=>setF('matrixScore',v)}/>
             <div className="form-row">
               <div>
                 <label>סוג נזק</label>
                 <select value={form.damageType} onChange={e=>setF('damageType',e.target.value)}>
-                  <option value="hard-deadline">🔴 דדליין קשיח</option>
-                  <option value="growing">🟠 הנזק גדל כל יום</option>
-                  <option value="fixed-daily">🟡 נזק קבוע ליום</option>
-                  <option value="zero">🟢 אפס נזק</option>
+                  <option value="hard-deadline">🔴 דדליין קשיח</option><option value="growing">🟠 גדל כל יום</option>
+                  <option value="fixed-daily">🟡 קבוע ליום</option><option value="zero">🟢 אפס</option>
                 </select>
               </div>
-              <div>
-                <label>דדליין</label>
-                <input type="date" value={form.deadline||''} onChange={e=>setF('deadline',e.target.value||null)}/>
-              </div>
+              <MatrixCalculator value={form.matrixScore} onChange={v=>setF('matrixScore',v)}
+                onDetailChange={d=>{setF('energyRequired',d.energyRequired);setF('size',d.size);setF('damageType',d.damageType);}}/>
             </div>
-            <div className="form-row">
-              <div>
-                <label>זמן לביצוע</label>
-                <input value={form.timeRequired} onChange={e=>setF('timeRequired',e.target.value)} placeholder="3 שעות/יום"/>
+
+            <button type="button" className="more-toggle" onClick={()=>setShowMore(m=>!m)}>
+              {showMore?'⬆ הסתר פרטים נוספים':'⬇ פרטים נוספים'}
+            </button>
+
+            {showMore&&<>
+              <div className="form-row">
+                <div>
+                  <label>אנרגיה נדרשת</label>
+                  <select value={form.energyRequired} onChange={e=>setF('energyRequired',e.target.value)}>
+                    <option value="גבוהה">גבוהה</option><option value="בינונית">בינונית</option><option value="נמוכה">נמוכה</option><option value="אפס">אפס</option>
+                  </select>
+                </div>
+                <div>
+                  <label>גודל</label>
+                  <select value={form.size} onChange={e=>setF('size',e.target.value)}>
+                    <option value="גדולה">גדולה</option><option value="בינונית">בינונית</option><option value="קטנה">קטנה</option>
+                  </select>
+                </div>
+              </div>
+              <div className="form-row">
+                <div>
+                  <label>אפקט על אנרגיה</label>
+                  <select value={form.energyEffect} onChange={e=>setF('energyEffect',e.target.value)}>
+                    <option value="מטעין">מטעין</option><option value="מרוקן">מרוקן</option><option value="ניטרלי">ניטרלי</option>
+                  </select>
+                </div>
+                <div>
+                  <label>להקביל</label>
+                  <input value={typeof form.layerable==='string'?form.layerable:''} onChange={e=>setF('layerable',e.target.value||false)} placeholder="כן — עם מה"/>
+                </div>
               </div>
               <div>
-                <label>תדירות</label>
-                <input value={form.frequency} onChange={e=>setF('frequency',e.target.value)} placeholder="יומי"/>
+                <label>השפעת דומינו</label>
+                <textarea value={form.dominoEffect} onChange={e=>setF('dominoEffect',e.target.value)} rows={2} placeholder="מה קורה אם מסיימים..."/>
               </div>
-            </div>
-            <div className="form-row">
-              <div>
-                <label>גודל</label>
-                <select value={form.size} onChange={e=>setF('size',e.target.value)}>
-                  <option value="גדולה">גדולה</option><option value="בינונית">בינונית</option><option value="קטנה">קטנה</option>
-                </select>
-              </div>
-              <div>
-                <label>אנרגיה נדרשת</label>
-                <select value={form.energyRequired} onChange={e=>setF('energyRequired',e.target.value)}>
-                  <option value="גבוהה">גבוהה</option><option value="בינונית">בינונית</option><option value="נמוכה">נמוכה</option><option value="אפס">אפס</option>
-                </select>
-              </div>
-            </div>
-            <div className="form-row">
-              <div>
-                <label>אפקט על אנרגיה</label>
-                <select value={form.energyEffect} onChange={e=>setF('energyEffect',e.target.value)}>
-                  <option value="מטעין">מטעין</option><option value="מרוקן">מרוקן</option><option value="ניטרלי">ניטרלי</option>
-                </select>
-              </div>
-              <div>
-                <label>להקביל</label>
-                <input value={typeof form.layerable==='string'?form.layerable:''} onChange={e=>setF('layerable',e.target.value||false)} placeholder="כן — עם מה"/>
-              </div>
-            </div>
-            <div>
-              <label>השפעת דומינו</label>
-              <textarea value={form.dominoEffect} onChange={e=>setF('dominoEffect',e.target.value)} rows={2} placeholder="מה קורה אם מסיימים..."/>
-            </div>
-            <div style={{display:'flex',gap:6,marginTop:4}}>
+            </>}
+
+            <div style={{display:'flex',gap:6}}>
               <button type="button" onClick={()=>setSaveToRepo(true)}
                 style={{flex:1,padding:'8px',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'inherit',
                   border:`2px solid ${saveToRepo?'var(--green)':'var(--border)'}`,
-                  background:saveToRepo?'rgba(34,197,94,.1)':'transparent',
-                  color:saveToRepo?'var(--green)':'var(--text3)'}}>
+                  background:saveToRepo?'rgba(34,197,94,.1)':'transparent',color:saveToRepo?'var(--green)':'var(--text3)'}}>
                 📦 שמור במאגר
               </button>
               <button type="button" onClick={()=>setSaveToRepo(false)}
                 style={{flex:1,padding:'8px',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'inherit',
                   border:`2px solid ${!saveToRepo?'var(--orange)':'var(--border)'}`,
-                  background:!saveToRepo?'rgba(249,115,22,.1)':'transparent',
-                  color:!saveToRepo?'var(--orange)':'var(--text3)'}}>
+                  background:!saveToRepo?'rgba(249,115,22,.1)':'transparent',color:!saveToRepo?'var(--orange)':'var(--text3)'}}>
                 ⚡ חד פעמית
               </button>
             </div>
           </>)}
+
+          {/* Background toggle (shared) */}
+          <button type="button" onClick={()=>setIsBackground(b=>!b)}
+            style={{width:'100%',padding:'8px 12px',borderRadius:8,fontSize:12,fontWeight:600,
+              cursor:'pointer',fontFamily:'inherit',textAlign:'right',
+              border:`2px solid ${isBackground?'rgba(99,102,241,.5)':'var(--border)'}`,
+              background:isBackground?'rgba(99,102,241,.1)':'transparent',
+              color:isBackground?'var(--accent)':'var(--text3)'}}>
+            {isBackground?'🏢 משימת רקע (יום שלם) — ריטואלים ייכנסו בתוכה':'🏢 סמן כמשימת רקע (יום שלם)'}
+          </button>
         </div>
 
         <div style={{display:'flex',gap:8,marginTop:14}}>
@@ -3918,7 +3932,14 @@ function TaskRepositoryScreen({tasks,setTasks,history}){
   );
 }
 
-function MatrixCalculator({value,onChange}){
+function matrixAutoFill(energy,effort,delay){
+  const eMap={1:'גבוהה',2:'גבוהה',3:'בינונית',4:'נמוכה',5:'אפס'};
+  const sMap={1:'גדולה',2:'גדולה',3:'בינונית',4:'קטנה',5:'קטנה'};
+  const dMap={0:'zero',1:'zero',2:'fixed-daily',3:'growing',4:'growing',5:'hard-deadline'};
+  return{energyRequired:eMap[energy],size:sMap[effort],damageType:dMap[delay]};
+}
+
+function MatrixCalculator({value,onChange,onDetailChange}){
   const [open,setOpen]=useState(false);
   const [impact,setImpact]=useState(3);
   const [delay,setDelay]=useState(3);
@@ -3926,7 +3947,11 @@ function MatrixCalculator({value,onChange}){
   const [energy,setEnergy]=useState(3);
   const calc=impact*3+delay*3+effort*2+energy*2;
 
-  function apply(){onChange(calc);setOpen(false);}
+  function apply(){
+    onChange(calc);
+    if(onDetailChange)onDetailChange(matrixAutoFill(energy,effort,delay));
+    setOpen(false);
+  }
 
   const impactLabels=['0 — אפס','1 — כמעט לא מקדם','2 — מקדם קצת','3 — מקדם בינוני','4 — מקדם מאוד','5 — משנה חיים'];
   const delayLabels=['0 — אפס','1 — כמעט אפס','2 — נזק קל','3 — נזק בינוני','4 — נזק משמעותי','5 — קטסטרופה'];
@@ -4009,177 +4034,74 @@ function TaskEditModal({task,onSave,onClose}){
   const def={name:'',rating:'C',quadrant:2,domain:'',matrixScore:20,damageType:'fixed-daily',deadline:'',timeRequired:'',frequency:'',size:'בינונית',energyRequired:'בינונית',energyEffect:'ניטרלי',entryBarrier:'התארגנות קלה',layerable:false,dominoEffect:''};
   const [form,setForm]=useState(task||def);
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const hasExtra=form.energyRequired!=='בינונית'||form.size!=='בינונית'||form.energyEffect!=='ניטרלי'||form.entryBarrier!=='התארגנות קלה'||(typeof form.layerable==='string'&&form.layerable)||form.dominoEffect||form.timeRequired||form.frequency||(form.alertProfile&&form.alertProfile!=='auto')||form.requiresTravel;
+  const [showMore,setShowMore]=useState(!!hasExtra);
+  const dlDays=form.deadline?daysLeft(form.deadline):null;
 
   return(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e=>e.stopPropagation()}>
         <div style={{fontSize:18,fontWeight:700,marginBottom:16}}>{task?'עריכת משימה':'משימה חדשה'}</div>
         <div className="form-grid">
+          {/* Essential */}
           <div>
             <label>שם המשימה *</label>
             <input value={form.name} onChange={e=>set('name',e.target.value)} placeholder="שם המשימה"/>
           </div>
           <div className="form-row">
             <div>
-              <label>דירוג ABCDE</label>
+              <label>📅 דדליין</label>
+              <input type="date" value={form.deadline||''} onChange={e=>set('deadline',e.target.value||null)}/>
+            </div>
+            {dlDays!==null&&(
+              <div style={{display:'flex',alignItems:'flex-end',paddingBottom:4}}>
+                <span style={{fontSize:13,fontWeight:700,color:dlDays<=3?'var(--red)':dlDays<=7?'var(--orange)':dlDays<=14?'var(--yellow)':'var(--green)'}}>
+                  {dlDays===0?'היום!':dlDays===1?'מחר!':dlDays<0?`עבר ב-${Math.abs(dlDays)} ימים`:`${dlDays} ימים נותרו`}
+                </span>
+              </div>
+            )}
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1.5fr',gap:6}}>
+            <div>
+              <label>דירוג</label>
               <select value={form.rating} onChange={e=>set('rating',e.target.value)}>
                 {['A','B','C','D','E'].map(r=><option key={r} value={r}>{r}</option>)}
               </select>
             </div>
             <div>
-              <label>רביע אייזנהאואר</label>
+              <label>רביע</label>
               <select value={form.quadrant} onChange={e=>set('quadrant',Number(e.target.value))}>
                 {[1,2,3,4].map(q=><option key={q} value={q}>{q}</option>)}
               </select>
             </div>
+            <div>
+              <label>תחום</label>
+              <input value={form.domain} onChange={e=>set('domain',e.target.value)} placeholder="אקדמיה..."/>
+            </div>
           </div>
-          <div>
-            <label>תחום</label>
-            <input value={form.domain} onChange={e=>set('domain',e.target.value)} placeholder="אקדמיה, בריאות..."/>
-          </div>
-          <MatrixCalculator value={form.matrixScore} onChange={v=>set('matrixScore',v)}/>
           <div className="form-row">
             <div>
               <label>סוג נזק</label>
               <select value={form.damageType} onChange={e=>set('damageType',e.target.value)}>
-                <option value="hard-deadline">🔴 דדליין קשיח</option>
-                <option value="growing">🟠 הנזק גדל כל יום</option>
-                <option value="fixed-daily">🟡 נזק קבוע ליום</option>
-                <option value="zero">🟢 אפס נזק</option>
+                <option value="hard-deadline">🔴 דדליין קשיח</option><option value="growing">🟠 גדל כל יום</option>
+                <option value="fixed-daily">🟡 קבוע ליום</option><option value="zero">🟢 אפס</option>
               </select>
             </div>
-            <div>
-              <label>דדליין</label>
-              <input type="date" value={form.deadline||''} onChange={e=>set('deadline',e.target.value||null)}/>
-            </div>
-          </div>
-          <div className="form-row">
-            <div>
-              <label>זמן לביצוע</label>
-              <input value={form.timeRequired} onChange={e=>set('timeRequired',e.target.value)} placeholder="3 שעות/יום"/>
-            </div>
-            <div>
-              <label>תדירות</label>
-              <input value={form.frequency} onChange={e=>set('frequency',e.target.value)} placeholder="יומי"/>
-            </div>
-          </div>
-          <div className="form-row">
-            <div>
-              <label>גודל</label>
-              <select value={form.size} onChange={e=>set('size',e.target.value)}>
-                <option value="גדולה">גדולה</option><option value="בינונית">בינונית</option><option value="קטנה">קטנה</option>
-              </select>
-            </div>
-            <div>
-              <label>אנרגיה נדרשת</label>
-              <select value={form.energyRequired} onChange={e=>set('energyRequired',e.target.value)}>
-                <option value="גבוהה">גבוהה</option><option value="בינונית">בינונית</option><option value="נמוכה">נמוכה</option><option value="אפס">אפס</option>
-              </select>
-            </div>
-          </div>
-          <div className="form-row">
-            <div>
-              <label>אפקט על אנרגיה</label>
-              <select value={form.energyEffect} onChange={e=>set('energyEffect',e.target.value)}>
-                <option value="מטעין">מטעין</option><option value="מרוקן">מרוקן</option><option value="ניטרלי">ניטרלי</option>
-              </select>
-            </div>
-            <div>
-              <label>חסם כניסה</label>
-              <select value={form.entryBarrier} onChange={e=>set('entryBarrier',e.target.value)}>
-                <option value="החלטה בלבד">החלטה בלבד</option>
-                <option value="התארגנות קלה">התארגנות קלה</option>
-                <option value="התארגנות מורכבת">התארגנות מורכבת</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label>להקביל (ריק = לא)</label>
-            <input value={typeof form.layerable==='string'?form.layerable:''} onChange={e=>set('layerable',e.target.value||false)} placeholder="כן — עם מה"/>
-          </div>
-          <div>
-            <label>השפעת דומינו</label>
-            <textarea value={form.dominoEffect} onChange={e=>set('dominoEffect',e.target.value)} rows={2} placeholder="מה קורה אם מסיימים..."/>
+            <MatrixCalculator value={form.matrixScore} onChange={v=>set('matrixScore',v)}
+              onDetailChange={d=>{set('energyRequired',d.energyRequired);set('size',d.size);set('damageType',d.damageType);}}/>
           </div>
 
-          {/* ── Alert profile + Travel ── */}
-          <div style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:10,padding:'12px'}}>
-            <div style={{fontSize:12,fontWeight:700,color:'var(--text2)',marginBottom:10}}>🔔 התראות ונסיעה</div>
-            <div className="form-row">
-              <div>
-                <label>מסלול התראות</label>
-                <select value={form.alertProfile||'auto'} onChange={e=>set('alertProfile',e.target.value)}
-                  style={{fontSize:13}}>
-                  <option value="auto">🤖 אוטומטי (לפי דירוג)</option>
-                  <option value="critical">🔴 קריטי — יום + שעה + 10 דק</option>
-                  <option value="important">🟠 חשוב — שעה + 10 דק</option>
-                  <option value="standard">🟡 רגיל — 30 דק + 10 דק</option>
-                  <option value="light">🟢 קל — 10 דק בלבד</option>
-                  <option value="minimal">⚪ מינימלי — 5 דק בלבד</option>
-                  <option value="none">🔕 ללא התראה</option>
-                </select>
-              </div>
-              <div>
-                <label>דורש נסיעה?</label>
-                <button onClick={()=>set('requiresTravel',!form.requiresTravel)} type="button"
-                  style={{width:'100%',padding:'8px 12px',borderRadius:8,fontSize:13,fontWeight:600,
-                    border:`2px solid ${form.requiresTravel?'var(--accent)':'var(--border)'}`,
-                    background:form.requiresTravel?'rgba(99,102,241,.15)':'var(--bg2)',
-                    color:form.requiresTravel?'var(--accent2)':'var(--text3)',
-                    cursor:'pointer',fontFamily:'inherit',transition:'.2s'}}>
-                  {form.requiresTravel?'🚗 כן':'🏠 לא — במקום'}
-                </button>
-                {form.requiresTravel&&(
-                  <div style={{marginTop:6}}>
-                    <label>זמן נסיעה (דקות)</label>
-                    <input type="number" min={5} max={180} step={5} value={form.travelDuration||30}
-                      onChange={e=>set('travelDuration',Number(e.target.value))}
-                      style={{width:'100%'}}/>
-                  </div>
-                )}
-              </div>
-            </div>
-            {/* Preview */}
-            <div style={{marginTop:8,fontSize:11,color:'var(--text3)',lineHeight:1.6}}>
-              {(()=>{
-                const p=form.alertProfile||'auto';
-                const travel=form.requiresTravel;
-                let alerts=[];
-                if(p==='auto'){
-                  if(form.rating==='A'||form.damageType==='hard-deadline')alerts=['יום לפני','שעה לפני','10 דק'];
-                  else if(form.rating==='B')alerts=['10 דק'];
-                  else alerts=['5 דק'];
-                }
-                else if(p==='critical')alerts=['יום לפני','שעה לפני','10 דק'];
-                else if(p==='important')alerts=['שעה לפני','10 דק'];
-                else if(p==='standard')alerts=['30 דק','10 דק'];
-                else if(p==='light')alerts=['10 דק'];
-                else if(p==='minimal')alerts=['5 דק'];
-                else alerts=[];
-                if(travel)alerts.unshift('🚗 שעתיים לפני (נסיעה)');
-                return alerts.length?'📋 התראות: '+alerts.join(' → '):'🔕 ללא התראות';
-              })()}
-            </div>
-          </div>
-
-          {/* ── Recurring ── */}
+          {/* Recurring (important for repo) */}
           <div style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:10,padding:'12px'}}>
             <div style={{fontSize:12,fontWeight:700,color:'var(--text2)',marginBottom:10}}>🔁 משימה חוזרת</div>
             <div className="form-row">
               <div>
-                <label>תדירות שיבוץ אוטומטי</label>
+                <label>תדירות שיבוץ</label>
                 <select value={form.recurring||'none'} onChange={e=>set('recurring',e.target.value)} style={{fontSize:13}}>
-                  <option value="none">ללא — ידני בלבד</option>
-                  <option value="daily">כל יום</option>
-                  <option value="weekdays">ימים א-ה</option>
-                  <option value="sun">כל יום ראשון</option>
-                  <option value="mon">כל יום שני</option>
-                  <option value="tue">כל יום שלישי</option>
-                  <option value="wed">כל יום רביעי</option>
-                  <option value="thu">כל יום חמישי</option>
-                  <option value="fri">כל יום שישי</option>
-                  <option value="sat">כל שבת</option>
-                  <option value="weekly">פעם בשבוע (יום גמיש)</option>
+                  <option value="none">ללא — ידני</option><option value="daily">כל יום</option><option value="weekdays">א-ה</option>
+                  <option value="sun">ראשון</option><option value="mon">שני</option><option value="tue">שלישי</option>
+                  <option value="wed">רביעי</option><option value="thu">חמישי</option><option value="fri">שישי</option>
+                  <option value="sat">שבת</option><option value="weekly">פעם בשבוע</option>
                 </select>
               </div>
               {form.recurring&&form.recurring!=='none'&&(
@@ -4189,15 +4111,90 @@ function TaskEditModal({task,onSave,onClose}){
                 </div>
               )}
             </div>
-            {form.recurring&&form.recurring!=='none'&&(
-              <div style={{marginTop:6,fontSize:11,color:'var(--accent)',fontWeight:600}}>
-                🔁 {form.recurring==='daily'?'כל יום':form.recurring==='weekdays'?'ימים א׳-ה׳':form.recurring==='weekly'?'פעם בשבוע':
-                  'כל יום '+(form.recurring==='sun'?'ראשון':form.recurring==='mon'?'שני':form.recurring==='tue'?'שלישי':
-                  form.recurring==='wed'?'רביעי':form.recurring==='thu'?'חמישי':form.recurring==='fri'?'שישי':'שבת')}
-                {' '}ב-{form.recurringTime||'09:00'}
-              </div>
-            )}
           </div>
+
+          {/* More details toggle */}
+          <button type="button" className="more-toggle" onClick={()=>setShowMore(m=>!m)}>
+            {showMore?'⬆ הסתר פרטים נוספים':'⬇ פרטים נוספים'}
+          </button>
+
+          {showMore&&<>
+            <div className="form-row">
+              <div>
+                <label>אנרגיה נדרשת</label>
+                <select value={form.energyRequired} onChange={e=>set('energyRequired',e.target.value)}>
+                  <option value="גבוהה">גבוהה</option><option value="בינונית">בינונית</option><option value="נמוכה">נמוכה</option><option value="אפס">אפס</option>
+                </select>
+              </div>
+              <div>
+                <label>גודל</label>
+                <select value={form.size} onChange={e=>set('size',e.target.value)}>
+                  <option value="גדולה">גדולה</option><option value="בינונית">בינונית</option><option value="קטנה">קטנה</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-row">
+              <div>
+                <label>אפקט על אנרגיה</label>
+                <select value={form.energyEffect} onChange={e=>set('energyEffect',e.target.value)}>
+                  <option value="מטעין">מטעין</option><option value="מרוקן">מרוקן</option><option value="ניטרלי">ניטרלי</option>
+                </select>
+              </div>
+              <div>
+                <label>חסם כניסה</label>
+                <select value={form.entryBarrier} onChange={e=>set('entryBarrier',e.target.value)}>
+                  <option value="החלטה בלבד">החלטה בלבד</option><option value="התארגנות קלה">התארגנות קלה</option><option value="התארגנות מורכבת">התארגנות מורכבת</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-row">
+              <div>
+                <label>זמן לביצוע</label>
+                <input value={form.timeRequired} onChange={e=>set('timeRequired',e.target.value)} placeholder="3 שעות/יום"/>
+              </div>
+              <div>
+                <label>תדירות</label>
+                <input value={form.frequency} onChange={e=>set('frequency',e.target.value)} placeholder="יומי"/>
+              </div>
+            </div>
+            <div>
+              <label>להקביל</label>
+              <input value={typeof form.layerable==='string'?form.layerable:''} onChange={e=>set('layerable',e.target.value||false)} placeholder="כן — עם מה"/>
+            </div>
+            <div>
+              <label>השפעת דומינו</label>
+              <textarea value={form.dominoEffect} onChange={e=>set('dominoEffect',e.target.value)} rows={2} placeholder="מה קורה אם מסיימים..."/>
+            </div>
+            <div style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:10,padding:'12px'}}>
+              <div style={{fontSize:12,fontWeight:700,color:'var(--text2)',marginBottom:10}}>🔔 התראות ונסיעה</div>
+              <div className="form-row">
+                <div>
+                  <label>מסלול התראות</label>
+                  <select value={form.alertProfile||'auto'} onChange={e=>set('alertProfile',e.target.value)} style={{fontSize:13}}>
+                    <option value="auto">🤖 אוטומטי</option><option value="critical">🔴 קריטי</option><option value="important">🟠 חשוב</option>
+                    <option value="standard">🟡 רגיל</option><option value="light">🟢 קל</option><option value="minimal">⚪ מינימלי</option><option value="none">🔕 ללא</option>
+                  </select>
+                </div>
+                <div>
+                  <label>נסיעה</label>
+                  <button onClick={()=>set('requiresTravel',!form.requiresTravel)} type="button"
+                    style={{width:'100%',padding:'8px 12px',borderRadius:8,fontSize:13,fontWeight:600,
+                      border:`2px solid ${form.requiresTravel?'var(--accent)':'var(--border)'}`,
+                      background:form.requiresTravel?'rgba(99,102,241,.15)':'var(--bg2)',
+                      color:form.requiresTravel?'var(--accent2)':'var(--text3)',cursor:'pointer',fontFamily:'inherit'}}>
+                    {form.requiresTravel?'🚗 כן':'🏠 לא'}
+                  </button>
+                  {form.requiresTravel&&(
+                    <div style={{marginTop:6}}>
+                      <label>זמן נסיעה (דק')</label>
+                      <input type="number" min={5} max={180} step={5} value={form.travelDuration||30}
+                        onChange={e=>set('travelDuration',Number(e.target.value))} style={{width:'100%'}}/>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>}
         </div>
         <div style={{display:'flex',gap:8,marginTop:16}}>
           <button className="btn btn-ghost" onClick={onClose}>ביטול</button>
