@@ -479,6 +479,12 @@ function startListeners(){
         const val=JSON.parse(payload.data);
         // Ignore our own writes
         if(payload.device===_deviceId)return;
+        // Protect: reject stale remote writes (if we wrote more recently, keep ours)
+        const localWriteTs=_lastWriteTs[key]||0;
+        if(payload.ts&&localWriteTs>payload.ts){
+          console.warn('🛡️ Blocked stale remote write for:',key,'local wrote at',localWriteTs,'remote at',payload.ts);
+          return;
+        }
         // Protect: don't overwrite local data with smaller/empty remote data
         try{
           const local=JSON.parse(localStorage.getItem(key)||'null');
@@ -1903,11 +1909,9 @@ function DailyScheduleScreen({tasks,setTasks,schedule:propSchedule,setSchedule:p
             startTime:it.startTime,
             endTime:it.endTime,
             note:it.note||'',
-            _fromDailySync:true,
             done:it.done,
           }));
-        const manual=(p[dk]||[]).filter(e=>!e._fromDailySync);
-        return{...p,[dk]:[...manual,...synced]};
+        return{...p,[dk]:synced};
       });
     },1500);
     return()=>clearTimeout(autoSyncTimer.current);
