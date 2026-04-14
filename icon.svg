@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e2a4a"/>
+      <stop offset="100%" stop-color="#0f1629"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8ba4c4"/>
+      <stop offset="50%" stop-color="#6b86aa"/>
+      <stop offset="100%" stop-color="#4a6585"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <!-- Outer ring -->
+  <circle cx="256" cy="256" r="210" fill="none" stroke="url(#metal)" stroke-width="16" opacity=".6"/>
+  <circle cx="256" cy="256" r="185" fill="none" stroke="url(#metal)" stroke-width="8" opacity=".4"/>
+  <!-- Gear teeth (12) -->
+  <g fill="url(#metal)" opacity=".85">
+    <rect x="244" y="56" width="24" height="40" rx="4" transform="rotate(0,256,256)"/>
+    <rect x="244" y="56" width="24" height="40" rx="4" transform="rotate(30,256,256)"/>
+    <rect x="244" y="56" width="24" height="40" rx="4" transform="rotate(60,256,256)"/>
+    <rect x="244" y="56" width="24" height="40" rx="4" transform="rotate(90,256,256)"/>
+    <rect x="244" y="56" width="24" height="40" rx="4" transform="rotate(120,256,256)"/>
+    <rect x="244" y="56" width="24" height="40" rx="4" transform="rotate(150,256,256)"/>
+    <rect x="244" y="56" width="24" height="40" rx="4" transform="rotate(180,256,256)"/>
+    <rect x="244" y="56" width="24" height="40" rx="4" transform="rotate(210,256,256)"/>
+    <rect x="244" y="56" width="24" height="40" rx="4" transform="rotate(240,256,256)"/>
+    <rect x="244" y="56" width="24" height="40" rx="4" transform="rotate(270,256,256)"/>
+    <rect x="244" y="56" width="24" height="40" rx="4" transform="rotate(300,256,256)"/>
+    <rect x="244" y="56" width="24" height="40" rx="4" transform="rotate(330,256,256)"/>
+  </g>
+  <!-- Inner circle (clock face) -->
+  <circle cx="256" cy="256" r="140" fill="#162040" stroke="url(#metal)" stroke-width="10"/>
+  <!-- Clock dots (12) -->
+  <g fill="#8ba4c4" opacity=".7">
+    <circle cx="256" cy="130" r="6"/><circle cx="319" cy="147" r="5"/><circle cx="362" cy="192" r="5"/>
+    <circle cx="380" cy="256" r="6"/><circle cx="362" cy="320" r="5"/><circle cx="319" cy="365" r="5"/>
+    <circle cx="256" cy="382" r="6"/><circle cx="193" cy="365" r="5"/><circle cx="150" cy="320" r="5"/>
+    <circle cx="132" cy="256" r="6"/><circle cx="150" cy="192" r="5"/><circle cx="193" cy="147" r="5"/>
+  </g>
+  <!-- Clock hands -->
+  <g stroke="url(#metal)" stroke-linecap="round" filter="url(#glow)">
+    <!-- Hour hand (pointing ~10 o'clock) -->
+    <line x1="256" y1="256" x2="195" y2="175" stroke-width="12"/>
+    <!-- Minute hand (pointing ~2 o'clock) -->
+    <line x1="256" y1="256" x2="340" y2="185" stroke-width="8"/>
+  </g>
+  <!-- Arrow 1 (upper right, curving out) -->
+  <g fill="url(#metal)" opacity=".9">
+    <path d="M330 130 L370 100 L360 140 Z"/>
+    <path d="M310 155 Q350 120 365 125" stroke="url(#metal)" stroke-width="8" fill="none" stroke-linecap="round"/>
+  </g>
+  <!-- Arrow 2 (lower left, curving out) -->
+  <g fill="url(#metal)" opacity=".9">
+    <path d="M182 382 L142 412 L152 372 Z"/>
+    <path d="M202 357 Q162 392 147 387" stroke="url(#metal)" stroke-width="8" fill="none" stroke-linecap="round"/>
+  </g>
+  <!-- Center gem -->
+  <g filter="url(#glow)">
+    <polygon points="256,235 272,260 256,285 240,260" fill="#7ba8d4" opacity=".9"/>
+    <polygon points="256,240 267,258 256,276 245,258" fill="#a8cde8" opacity=".7"/>
+  </g>
+  <!-- Center dot -->
+  <circle cx="256" cy="260" r="4" fill="#c0d8ef"/>
+</svg>
